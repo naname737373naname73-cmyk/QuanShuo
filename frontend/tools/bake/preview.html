@@ -1,0 +1,17 @@
+<!doctype html>
+<meta charset="utf-8"><base href="/">
+<title>星湖预览</title>
+<style>html,body{margin:0;height:100%;background:#000;overflow:hidden}canvas{position:fixed;inset:0;width:100vw;height:100vh;display:block}</style>
+<canvas id="c"></canvas>
+<script type="module">
+import { LakeScene } from '/src/scene/LakeScene.ts';
+const q = new URLSearchParams(location.search);
+const scene = new LakeScene(document.getElementById('c'));
+await scene.initialize();
+const day = +(q.get('day') ?? 3), t = +(q.get('t') ?? 12.5);
+if (q.has('ripple')) { scene.addRipple(.62, .22, t - 1.6, 1); scene.addRipple(.8, .12, t - .9, .8); }
+if (q.has('meteor')) scene.launchMeteor(t - .6, .3);
+const frame = () => scene.render({ time: t, day, voice: +(q.get('voice') ?? 0), parallax: 0 });
+frame(); requestAnimationFrame(frame);
+window.lakeReady = true;
+</script>

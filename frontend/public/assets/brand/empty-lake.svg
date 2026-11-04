@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 160" role="img" aria-labelledby="empty-lake-title">
+  <title id="empty-lake-title">静候第一圈涟漪</title>
+  <g id="quiet-lake" fill="none" stroke="currentColor" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round">
+    <path id="horizon" d="M36 84 H284" opacity="0.5" />
+    <path id="mountain" d="M80 84 L111 47 L142 84" opacity="0.75" />
+    <g id="lake-ripples">
+      <ellipse cx="177" cy="116" rx="21" ry="3.5" opacity="0.8" />
+      <ellipse cx="177" cy="116" rx="42" ry="8" opacity="0.5" />
+      <ellipse cx="177" cy="116" rx="63" ry="13" opacity="0.25" />
+    </g>
+    <path id="lake-star" d="M225 28 Q225 35.2 226.4 36.6 Q227.8 38 235 38 Q227.8 38 226.4 39.4 Q225 40.8 225 48 Q225 40.8 223.6 39.4 Q222.2 38 215 38 Q222.2 38 223.6 36.6 Q225 35.2 225 28 Z" />
+  </g>
+</svg>

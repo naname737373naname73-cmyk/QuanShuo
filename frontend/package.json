@@ -1,0 +1,24 @@
+{
+  "name": "quanshuo-frontend",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview --host 127.0.0.1",
+    "shots": "node scripts/shots.mjs",
+    "test:drafts": "node scripts/test-drafts.mjs",
+    "test:manage": "node scripts/test-manage.mjs",
+    "test:skins": "node scripts/test-skins.mjs",
+    "test:local-asr": "node scripts/test-local-asr.mjs",
+    "test:local-asr-races": "node scripts/test-local-asr-races.mjs"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.6",
+    "playwright": "1.64.1",
+    "subset-font": "^2.9.0",
+    "typescript": "7.0.2",
+    "vite": "8.3.5"
+  }
+}

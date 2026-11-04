@@ -1,0 +1,164 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>圈说地形烘焙</title>
+<style>html,body{margin:0;background:#111}canvas{display:block;max-width:100vw}</style>
+<canvas id="c"></canvas>
+<script type="module">
+// 离线烘焙镜湖远山的“光照数据”。输出两张无透明通道的 PNG，运行时由 lake.frag.glsl 按时段实时打光。
+// terrain-a.png: R=法线 x, G=法线 y（朝上）, B=主光阴影（1=受光）
+// terrain-b.png: R=积雪, G=环境遮蔽, B=深度（0=天空，>0=山体，越大越近）
+const q = new URLSearchParams(location.search);
+const W = +(q.get('w') ?? 4320), H = +(q.get('h') ?? 720), AA = +(q.get('aa') ?? 3);
+const canvas = document.getElementById('c');
+canvas.width = W; canvas.height = H;
+const gl = canvas.getContext('webgl2', { preserveDrawingBuffer: true, antialias: false, powerPreference: 'high-performance' });
+if (!gl) throw new Error('需要 WebGL2');
+gl.getExtension('EXT_color_buffer_float');
+
+const vs = `#version 300 es
+in vec2 a; out vec2 v; void main(){ v=a*.5+.5; gl_Position=vec4(a,0.,1.); }`;
+
+const fs = `#version 300 es
+precision highp float;
+in vec2 v; out vec4 o;
+uniform vec2 uRes; uniform vec2 uOff; uniform int uPass;
+#define PI 3.14159265
+
+float hash(vec2 p){ p=fract(p*vec2(123.34,456.21)); p+=dot(p,p+45.32); return fract(p.x*p.y); }
+// 值噪声及解析导数：高频随坡度衰减，是山体“被侵蚀”质感的关键
+vec3 noised(vec2 p){
+  vec2 i=floor(p), f=fract(p);
+  vec2 u=f*f*f*(f*(f*6.-15.)+10.), du=30.*f*f*(f*(f-2.)+1.);
+  float a=hash(i), b=hash(i+vec2(1,0)), c=hash(i+vec2(0,1)), d=hash(i+vec2(1,1));
+  float k0=a,k1=b-a,k2=c-a,k3=a-b-c+d;
+  return vec3(k0+k1*u.x+k2*u.y+k3*u.x*u.y, du*vec2(k1+k3*u.y,k2+k3*u.x));
+}
+const mat2 M=mat2(.8,-.6,.6,.8);
+
+float gaussian(float x,float c,float w){ float d=(x-c)/w; return exp(-d*d); }
+
+// 山脉包络：横向一列山峰，主峰偏右。高度单位是公里量级。
+float envelope(vec2 p){
+  float x=p.x, z=p.y;
+  // 主峰：四面金字塔度量，产生清晰的棱线和大块雪面
+  vec2 q=vec2(.82*x+.57*(z-34.),-.57*x+.82*(z-34.));
+  float d=max(abs(q.x)*1.05,abs(q.y)*.92)*.74+length(q)*.26;
+  float horn=9.9*exp(-pow(d/5.9,1.02));
+  // 两侧山脊与较低的群峰
+  float range=0.;
+  range+=3.6*gaussian(x,-10.,5.0)*gaussian(z,40.,8.);
+  range+=4.3*gaussian(x,-19.,4.2)*gaussian(z,46.,9.);
+  range+=3.4*gaussian(x,-29.,6.0)*gaussian(z,44.,9.);
+  range+=3.9*gaussian(x,-41.,6.5)*gaussian(z,48.,9.);
+  range+=4.2*gaussian(x,10.,3.8)*gaussian(z,42.,8.);
+  range+=5.1*gaussian(x,16.,3.2)*gaussian(z,50.,7.);
+  range+=4.4*gaussian(x,24.,4.8)*gaussian(z,46.,9.);
+  range+=3.2*gaussian(x,35.,6.5)*gaussian(z,42.,10.);
+  // 近处低矮的雪坡，把山体和湖岸接起来
+  float near=1.05*gaussian(z,16.,6.)*(0.72+.28*sin(x*.19+1.2));
+  float shoulder=2.5*gaussian(z,27.,8.);
+  return max(horn+range,0.)+near+shoulder*(.60+.40*sin(x*.31+.4));
+}
+
+float ridged(vec2 p,int octaves){
+  float a=0.,b=.5; vec2 d=vec2(0.);
+  for(int i=0;i<octaves;i++){
+    vec3 n=noised(p);
+    d+=n.yz;
+    float r=1.-abs(2.*n.x-1.);
+    a+=b*r*r/(1.+dot(d,d)*.42);
+    b*=.5; p=M*p*2.03;
+  }
+  return a;
+}
+
+float terrain(vec2 p,int octaves){
+  float e=envelope(p);
+  // 域扭曲让棱线不直
+  vec2 w=vec2(noised(p*.11+3.1).x,noised(p*.11+9.7).x)-.5;
+  float r=ridged((p+w*4.5)*.30,octaves);
+  float h=e*(.56+.72*r)+(r-.42)*.34*smoothstep(.2,2.2,e);
+  // 贴近水面压平，形成岸线
+  float shoreFade=smoothstep(5.,13.,p.y);
+  return max(h*shoreFade-.02,-.02);
+}
+float mapH(vec3 p){ return p.y-terrain(p.xz,6); }
+vec3 normalAt(vec3 p,float t,int octaves,float scale){
+  float e=max(.006,t*.00042)*scale;
+  vec2 d=vec2(e,0.);
+  return normalize(vec3(terrain(p.xz-d.xy,octaves)-terrain(p.xz+d.xy,octaves),2.*e,terrain(p.xz-d.yx,octaves)-terrain(p.xz+d.yx,octaves)));
+}
+const vec3 LIGHT=normalize(vec3(-.74,.42,-.44));
+
+vec3 shade(vec2 frag){
+  // 长焦、贴近湖面的相机。画面底边就是湖面高度。
+  vec2 uv=(frag-vec2(.5*uRes.x,0.))/uRes.y;
+  vec3 ro=vec3(0.,.16,-22.);
+  // 横纵同一焦距，避免山被拉成针状
+  const float FOCAL=.30;
+  vec3 rd=normalize(vec3(uv.x*FOCAL,uv.y*FOCAL+.002,1.));
+  float t=20.; float last=0.; float lastD=mapH(ro+rd*t); bool hit=false;
+  for(int i=0;i<900;i++){
+    vec3 p=ro+rd*t; float d=mapH(p);
+    if(d<.0016*t*.1){ float f=lastD/(lastD-d+1e-5); t=mix(last,t,clamp(f,0.,1.)); hit=true; break; }
+    last=t; lastD=d; t+=max(.012,d*.26);
+    if(t>130.) break;
+  }
+  if(!hit) return vec3(0.);
+  vec3 p=ro+rd*t;
+  vec3 fine=normalAt(p,t,11,1.);
+  vec3 soft=normalAt(p,t,4,7.);
+  vec3 n=fine;
+  float s=1.; float st=.08;
+  for(int i=0;i<64;i++){ vec3 q=p+LIGHT*st; float d=mapH(q); s=min(s,10.*d/st); if(s<.003) break; st+=clamp(d,.05,.8); if(st>26.) break; }
+  s=clamp(s,0.,1.); s=s*s*(3.-2.*s);
+  // 环境遮蔽：沿法线采样几步高度差
+  float ao=1.;
+  for(int i=1;i<=6;i++){ float dd=float(i)*.11; ao-=(dd-max(mapH(p+n*dd),0.))*.17/float(i); }
+  ao=clamp(ao,0.,1.);
+  // 积雪：陡坡留岩石，高频噪声打碎分界
+  float slope=mix(soft.y,fine.y,.5);
+  float nz=noised(p.xz*2.9).x*.5+noised(p.xz*8.3).x*.3+noised(p.xz*23.).x*.2;
+  // 越高越陡的地方岩石越多，像真实的角峰
+  float snow=smoothstep(.40,.58,slope+(nz-.5)*.32-.008*max(p.y-3.,0.));
+  float nearSnow=smoothstep(1.5,.2,p.y);
+  snow=max(snow,nearSnow*.97);
+  // 雪面只保留大形，岩壁保留全部细节，这是去掉“塑料皱纹”的关键
+  n=normalize(mix(fine,soft,snow*.86));
+  float depth=clamp(1.-(t-20.)/110.,.02,1.);
+  return uPass==0 ? vec3(n.x*.5+.5,n.y,s) : vec3(snow,ao,depth);
+}
+void main(){
+  vec3 c=vec3(0.);
+  for(int y=0;y<${AA};y++) for(int x=0;x<${AA};x++){
+    vec2 j=(vec2(float(x),float(y))+.5)/float(${AA})-.5;
+    c+=shade(gl_FragCoord.xy+uOff+j);
+  }
+  o=vec4(c/float(${AA*AA}),1.);
+}`;
+
+function sh(t, s) { const x = gl.createShader(t); gl.shaderSource(x, s); gl.compileShader(x); if (!gl.getShaderParameter(x, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(x)); return x; }
+const p = gl.createProgram(); gl.attachShader(p, sh(gl.VERTEX_SHADER, vs)); gl.attachShader(p, sh(gl.FRAGMENT_SHADER, fs)); gl.linkProgram(p); gl.useProgram(p);
+gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer());
+gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);
+const al = gl.getAttribLocation(p, 'a'); gl.enableVertexAttribArray(al); gl.vertexAttribPointer(al, 2, gl.FLOAT, false, 0, 0);
+gl.uniform2f(gl.getUniformLocation(p, 'uRes'), W, H);
+const uOff = gl.getUniformLocation(p, 'uOff'), uPass = gl.getUniformLocation(p, 'uPass');
+gl.viewport(0, 0, W, H);
+
+// 分块绘制，避免一帧太久触发显卡超时（TDR）
+window.bake = async (pass) => {
+  gl.uniform1i(uPass, pass); gl.uniform2f(uOff, 0, 0);
+  gl.enable(gl.SCISSOR_TEST);
+  const tile = 256;
+  for (let y = 0; y < H; y += tile) for (let x = 0; x < W; x += tile) {
+    gl.scissor(x, y, tile, tile); gl.drawArrays(gl.TRIANGLES, 0, 3); gl.finish();
+    await new Promise((r) => setTimeout(r, 0));
+  }
+  gl.disable(gl.SCISSOR_TEST);
+  return canvas.toDataURL('image/png');
+};
+const r = gl.getExtension('WEBGL_debug_renderer_info');
+document.title = r ? gl.getParameter(r.UNMASKED_RENDERER_WEBGL) : 'unknown';
+window.bakeReady = true;
+</script>

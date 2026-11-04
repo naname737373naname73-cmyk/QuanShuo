@@ -1,0 +1,9 @@
+{
+  "measuredAt": "2026-10-31T22:15:30.472Z",
+  "viewport": "1600x1000",
+  "gpuMsPerFrame": 0.64,
+  "debugText": "29fps 35ms 缩放1.0 声音0.00 ANGLE (NVIDIA, NVIDIA GeForce RTX 5060 Ti (0x00002D04) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+  "renderer": "ANGLE (NVIDIA, NVIDIA GeForce RTX 5060 Ti (0x00002D04) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+  "usedJsHeapBytes": 3102035,
+  "note": "无头 Chrome 的前端测量，不等于原生窗口里的整机占用。"
+}

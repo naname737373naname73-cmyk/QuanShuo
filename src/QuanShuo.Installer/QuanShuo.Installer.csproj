@@ -1,0 +1,32 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <UseWindowsForms>true</UseWindowsForms>
+    <ApplicationHighDpiMode>PerMonitorV2</ApplicationHighDpiMode>
+    <AssemblyName>QuanShuo-Setup</AssemblyName>
+    <RootNamespace>QuanShuo.Installer</RootNamespace>
+    <ApplicationIcon>..\QuanShuo.Native\Assets\quanshuo.ico</ApplicationIcon>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="..\QuanShuo.Native\Shell\NativeTheme.cs" Link="Shell\NativeTheme.cs" />
+    <Compile Include="..\QuanShuo.Native\Shell\GlassButton.cs" Link="Shell\GlassButton.cs" />
+    <EmbeddedResource Include="..\..\artifacts\publish\portable\QuanShuo.exe">
+      <LogicalName>QuanShuo.exe</LogicalName>
+    </EmbeddedResource>
+    <EmbeddedResource Include="..\..\README.md">
+      <LogicalName>README.md</LogicalName>
+    </EmbeddedResource>
+    <EmbeddedResource Include="..\..\LICENSE" LogicalName="LICENSE" />
+    <EmbeddedResource Include="..\..\THIRD_PARTY_NOTICES.md" LogicalName="THIRD_PARTY_NOTICES.md" />
+    <EmbeddedResource Include="..\..\docs\local-asr-agent-prompt.md">
+      <LogicalName>local-asr-agent-prompt.md</LogicalName>
+    </EmbeddedResource>
+    <EmbeddedResource Include="..\..\docs\local-asr-assessment-prompt.md">
+      <LogicalName>local-asr-assessment-prompt.md</LogicalName>
+    </EmbeddedResource>
+    <EmbeddedResource Include="..\..\frontend\public\assets\lake\fallback-night.jpg">
+      <LogicalName>hero.jpg</LogicalName>
+    </EmbeddedResource>
+  </ItemGroup>
+</Project>

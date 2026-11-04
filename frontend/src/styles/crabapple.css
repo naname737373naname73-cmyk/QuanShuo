@@ -1,0 +1,195 @@
+/* 海棠皮肤：手绘花册。只有一种样子，不随时间变化。
+   配色取自 art/crabapple 里的画；组件的结构和星湖相同，这里只改观感。 */
+@property --voice { syntax: "<number>"; inherits: true; initial-value: 0; }
+
+:root[data-skin="crabapple"] {
+  color-scheme: light;
+  --canvas: #ece0c8;
+  --glass: #f6eedd;
+  --glass-strong: #f6eedd;
+  --glass-soft: rgba(106, 72, 38, .065);
+  --glass-hover: rgba(106, 72, 38, .115);
+  --highlight: transparent;
+  --ink: #3a2314;
+  --ink-muted: #664423;
+  --ink-faint: #795a39;
+  --line: rgba(106, 72, 38, .2);
+  --line-strong: rgba(150, 110, 40, .55);
+  --accent: #95384c;
+  --accent-ink: #fff5e6;
+  --accent-soft: rgba(190, 95, 110, .14);
+  --warm-text: #a4372c;
+  --danger-text: #a82e22;
+  --shadow: 0 8px 26px rgba(70, 42, 12, .15);
+  --image-shadow: 0 16px 40px rgba(60, 35, 10, .28);
+  --focus-ring: 0 0 0 2px rgba(149, 56, 76, .45);
+  --scrim: rgba(60, 38, 14, .22);
+  --option-bg: #f6eedd;
+  --option-ink: #3a2314;
+  --radius-sm: 3px;
+  --radius-md: 5px;
+  --radius-lg: 6px;
+  --frame: #bf9440;
+  /* 印花和题签：日历和原生录音窗口共用 */
+  --print-ground: #f5eee2;
+  --slip: #fcf8ef;
+  --bloom-ink: #a5554f;
+}
+
+[data-skin="crabapple"] body { background: var(--canvas); }
+[data-skin="crabapple"] .app {
+  background:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='p'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='3'/%3E%3CfeColorMatrix values='0 0 0 0 .42 0 0 0 0 .28 0 0 0 0 .15 0 0 0 .07 0'/%3E%3C/filter%3E%3Crect width='240' height='240' filter='url(%23p)'/%3E%3C/svg%3E"),
+    radial-gradient(ellipse at 62% 42%, #f2e8d3 0%, #e8dbc1 78%, #e0d1b4 100%);
+}
+
+/* 主画面 */
+.garden {
+  position: absolute; z-index: 1; container-type: size;
+  top: calc(var(--titlebar-height) + 12px); bottom: 60px; left: var(--journal-offset); right: 0;
+  display: grid; place-items: center; pointer-events: none;
+  transition: left var(--motion-slow) var(--ease-out);
+}
+.roundel {
+  position: relative; width: min(100cqh - 28px, 100cqw - 60px, 940px); aspect-ratio: 1; border-radius: 50%;
+  pointer-events: auto; background: #f6eedd;
+  box-shadow: 0 0 0 2px var(--frame), 0 0 0 9px #f6eedd, 0 0 0 10px var(--frame), 0 14px 40px rgba(60, 35, 10, .2);
+  transition: opacity var(--motion-slow) ease, --voice 130ms linear;
+}
+/* 说话时外面这圈金线跟着声音起伏 */
+.roundel::after {
+  content: ""; position: absolute; inset: -16px; border: 1.5px solid var(--frame); border-radius: 50%; pointer-events: none;
+  opacity: calc(var(--voice) * .9); transform: scale(calc(1 + var(--voice) * .03));
+}
+.bloom { display: block; width: 100%; height: 100%; border-radius: 50%; }
+/* 花开满以后点空白处能换画 */
+.bloom[data-swappable="true"] { cursor: pointer; }
+.petals { position: absolute; z-index: 6; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+.garden[data-receded="true"] .roundel { opacity: .15; pointer-events: none; }
+.app[data-onboarding="true"] .garden { left: 44vw; }
+
+/* 面板：一张纸，外面一道金线 */
+[data-skin="crabapple"] .glass {
+  backdrop-filter: none; background: var(--glass); border-color: var(--frame);
+  outline: 1px solid var(--frame); outline-offset: 3px; box-shadow: var(--shadow);
+}
+[data-skin="crabapple"] .journal, [data-skin="crabapple"] .inspector { top: calc(var(--titlebar-height) + 3px); bottom: calc(var(--edge) + 3px); }
+[data-skin="crabapple"] .journal { left: calc(var(--edge) + 3px); width: calc(var(--journal-width) - 6px); }
+[data-skin="crabapple"] .inspector { right: calc(var(--edge) + 3px); width: calc(var(--inspector-width) - 6px); }
+[data-skin="crabapple"] .settings-sheet { background: var(--glass); top: calc(var(--titlebar-height) + 3px); right: calc(var(--edge) + 3px); bottom: calc(var(--edge) + 3px); }
+
+[data-skin="crabapple"] .brand-name,
+[data-skin="crabapple"] .primary-button,
+[data-skin="crabapple"] .secondary-button,
+[data-skin="crabapple"] .manage-delete,
+[data-skin="crabapple"] kbd { font-family: var(--font-display); }
+[data-skin="crabapple"] .primary-button, [data-skin="crabapple"] .secondary-button { letter-spacing: .06em; font-weight: 500; }
+[data-skin="crabapple"] .primary-button {
+  border-radius: var(--radius-sm);
+  box-shadow: inset 0 0 0 1px var(--accent), inset 0 0 0 2px rgba(255, 236, 205, .42);
+}
+[data-skin="crabapple"] .secondary-button { border-color: var(--frame); background: transparent; }
+[data-skin="crabapple"] .secondary-button:hover:not(:disabled) { background: var(--glass-hover); }
+[data-skin="crabapple"] .app:has(> .inspector:not([hidden])) .journal-foot .primary-button { background: transparent; color: var(--ink); box-shadow: inset 0 0 0 1px var(--frame); }
+[data-skin="crabapple"] .app:has(> .inspector:not([hidden])) .journal-foot .primary-button:hover { background: var(--glass-hover); }
+[data-skin="crabapple"] .text-input, [data-skin="crabapple"] .select-input, [data-skin="crabapple"] .textarea-input { background: rgba(255, 252, 244, .6); }
+[data-skin="crabapple"] .search-input { border-color: var(--line); background: transparent; }
+[data-skin="crabapple"] .search-input:hover { border-color: var(--line-strong); }
+[data-skin="crabapple"] kbd { border-color: var(--frame); background: var(--glass); }
+[data-skin="crabapple"] .today-title { font-size: 25px; }
+
+/* 列表 */
+[data-skin="crabapple"] .record-item { border-radius: var(--radius-sm); }
+[data-skin="crabapple"] .record-item::after { content: ""; position: absolute; left: var(--space-2); right: var(--space-2); bottom: -3px; height: 1px; background: var(--line); }
+[data-skin="crabapple"] .record-item::before { box-shadow: none; }
+[data-skin="crabapple"] .record-thumb { border-radius: 2px; box-shadow: 0 0 0 1px var(--frame), 0 0 0 3px var(--glass), 0 0 0 4px var(--line); }
+[data-skin="crabapple"] .record-time,
+[data-skin="crabapple"] .inspector-time,
+[data-skin="crabapple"] .selected-list time,
+[data-skin="crabapple"] .star-tip time { font-family: var(--font-display); font-variant-numeric: lining-nums; letter-spacing: .02em; }
+[data-skin="crabapple"] .record-check { border-color: var(--frame); border-radius: 2px; }
+[data-skin="crabapple"] .empty-state img { width: 76px; opacity: 1; }
+[data-skin="crabapple"] .record-quick { background: var(--glass); box-shadow: 0 0 0 1px var(--line); }
+
+/* 舞台上的截图装在画框里 */
+[data-skin="crabapple"] .figure-image {
+  border-radius: 2px; background: var(--glass);
+  box-shadow: 0 0 0 1px var(--frame), 0 0 0 7px var(--glass), 0 0 0 8px var(--frame), var(--image-shadow);
+}
+[data-skin="crabapple"] .stage-figure { bottom: 62px; padding: 10px; align-items: center; }
+[data-skin="crabapple"] .figure-image { max-height: calc(100vh - var(--titlebar-height) - 96px); }
+
+/* 浮层 */
+[data-skin="crabapple"] .toast { background: var(--glass); border-color: var(--frame); backdrop-filter: none; border-radius: var(--radius-sm); }
+[data-skin="crabapple"] .star-tip { background: var(--glass); border-color: var(--frame); }
+[data-skin="crabapple"] .lake-note { display: none; }
+[data-skin="crabapple"] .day-control { display: none; }
+[data-skin="crabapple"] .listening-head { color: var(--accent); }
+
+/* 首次运行 */
+[data-skin="crabapple"] .onboarding-view { background: linear-gradient(90deg, rgba(236, 224, 200, .86) 0%, rgba(236, 224, 200, .55) 44%, transparent 72%); }
+[data-skin="crabapple"] .onboarding-step i.on { box-shadow: none; }
+[data-skin="crabapple"] .onboarding .text-input { backdrop-filter: none; }
+
+/* 设置 */
+[data-skin="crabapple"] .switch-track { background: transparent; border-color: var(--frame); }
+[data-skin="crabapple"] .switch-track::after { background: var(--frame); }
+
+/* 日历：圆画那棵树用开出来的花的颜色淡淡印满一层（print.webp，tools/bake-crabapple-print.mjs 生成），
+   中间贴一张题签放日期。原生的录音窗口是同一套，颜色见 NativeTheme 的 Print*、Slip、Bloom */
+[data-skin="crabapple"] .calendar-pop {
+  --cal-ink: #3a2314;
+  --cal-umber: #664423;
+  top: calc(var(--titlebar-height) + 4px);
+  width: 372px; height: 496px; padding: 0; border: 0; border-radius: 0; color: var(--cal-ink); overflow: visible;
+  /* 印花原图 1254 像素，按原大取花最密的那一块 */
+  background: url("/assets/crabapple/print.webp") -314px -202px / 1254px auto no-repeat, var(--print-ground);
+  box-shadow: 0 0 0 1px rgba(150, 80, 70, .3), 0 20px 50px rgba(60, 20, 20, .28); backdrop-filter: none;
+}
+[data-skin="crabapple"] .cal-sheet { position: absolute; inset: 0; }
+/* 题签：纸更白，浮起一点，里面一道花色细线 */
+[data-skin="crabapple"] .cal-sheet::before {
+  content: ""; position: absolute; left: 36px; top: 32px; right: 36px; bottom: 44px; background: var(--slip);
+  box-shadow: 0 0 0 1px rgba(150, 80, 70, .28), 0 2px 3px rgba(110, 60, 50, .1), 0 8px 18px rgba(110, 60, 50, .12);
+}
+[data-skin="crabapple"] .cal-sheet::after {
+  content: ""; position: absolute; left: 41px; top: 37px; right: 41px; bottom: 49px; border: 1px solid rgba(165, 85, 79, .42); pointer-events: none;
+}
+[data-skin="crabapple"] .cal-plaque { position: absolute; left: 82px; top: 47px; width: 208px; height: 32px; color: var(--bloom-ink); }
+[data-skin="crabapple"] .cal-plaque [data-month] { letter-spacing: .08em; }
+[data-skin="crabapple"] .cal-nav { color: var(--bloom-ink); }
+[data-skin="crabapple"] .cal-nav:hover { background: rgba(165, 85, 79, .1); color: #8e4640; }
+/* 题签里面从 (41,37) 到 (331,447) */
+[data-skin="crabapple"] .cal-week, [data-skin="crabapple"] .cal-grid { position: absolute; left: 60px; width: 252px; grid-template-columns: repeat(7, 36px); }
+[data-skin="crabapple"] .cal-week { top: 112px; height: 22px; color: var(--bloom-ink); }
+[data-skin="crabapple"] .cal-grid { top: 136px; grid-auto-rows: 40px; }
+[data-skin="crabapple"] .cal-day { color: var(--cal-umber); font: 500 var(--text-sm)/1 var(--font-display); }
+[data-skin="crabapple"] .cal-day[data-day] { color: var(--cal-ink); }
+/* 花放在数字下面，叠在一起时数字看不清 */
+[data-skin="crabapple"] .cal-day[data-day] span { transform: translateY(-8px); }
+[data-skin="crabapple"] .cal-day img {
+  position: absolute; left: 50%; bottom: 2px; width: 20px; height: 20px; margin-left: -10px;
+  transition: transform var(--motion-fast) var(--ease-out);
+}
+[data-skin="crabapple"] .cal-day:hover:not(:disabled) img { transform: scale(1.22); }
+[data-skin="crabapple"] .cal-day[data-today="true"]::after { width: 34px; height: 38px; margin: -19px 0 0 -17px; border: 1.5px solid var(--bloom-ink); border-radius: 17px; }
+[data-skin="crabapple"] .cal-foot { position: absolute; left: 62px; top: 382px; width: 248px; height: 32px; margin: 0; color: var(--cal-umber); }
+[data-skin="crabapple"] .cal-today { border: 1px solid rgba(165, 85, 79, .45); border-radius: var(--radius-sm); background: transparent; color: var(--bloom-ink); font-family: var(--font-display); }
+[data-skin="crabapple"] .cal-today:hover { background: rgba(165, 85, 79, .08); }
+
+/* 设置里选皮肤的两张卡片 */
+.skin-picker { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-3); margin: 0; padding: 0; border: 0; }
+.skin-picker legend { padding: 0; margin-bottom: 6px; font-size: var(--text-sm); }
+.skin-card {
+  position: relative; display: grid; gap: 2px; padding: var(--space-2); border: 1px solid var(--line); border-radius: var(--radius-md); cursor: pointer;
+  transition: border-color var(--motion-fast), background var(--motion-fast);
+}
+.skin-card:hover { border-color: var(--line-strong); background: var(--glass-soft); }
+.skin-card:has(input:checked) { border-color: var(--accent); background: var(--accent-soft); }
+.skin-card:has(input:focus-visible) { box-shadow: var(--focus-ring); }
+.skin-card input { position: absolute; opacity: 0; }
+.skin-swatch { display: block; height: 84px; margin-bottom: 6px; border-radius: calc(var(--radius-md) - 2px); background: center 62% / cover no-repeat; }
+[data-skin-card="starlake"] .skin-swatch { background-image: url("/assets/lake/fallback-night.jpg"); }
+[data-skin-card="crabapple"] .skin-swatch { background-image: url("/assets/crabapple/colour.webp"); background-position: 30% 40%; background-size: 170%; }
+.skin-name { font: 500 var(--text-body)/1.3 var(--font-display); }
+.skin-line { color: var(--ink-faint); font-size: var(--text-xs); }

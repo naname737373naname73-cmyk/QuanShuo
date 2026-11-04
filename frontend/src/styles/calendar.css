@@ -1,0 +1,89 @@
+/* 日历。星湖是一片星图：有记录的日子是星，离得近的连成星座。语音框用的是同一块玻璃。海棠的花框在 crabapple.css。 */
+.calendar-pop {
+  position: absolute; z-index: 25; box-sizing: border-box; overflow: hidden;
+  /* 上沿和左边列表对齐 */
+  top: var(--titlebar-height);
+  left: calc(var(--edge) + var(--journal-width) + 10px);
+  width: 372px; padding: 18px 18px 14px;
+  border: 1px solid rgba(196, 210, 255, .15); border-radius: 22px;
+  background: linear-gradient(170deg, rgba(14, 20, 56, .50), rgba(7, 11, 32, .66)); color: #e8edf9;
+  box-shadow: 0 26px 60px rgba(2, 6, 22, .5), inset 0 1px 0 rgba(255, 255, 255, .08);
+  backdrop-filter: blur(20px) saturate(1.45);
+  animation: rise var(--motion-normal) var(--ease-out);
+}
+.calendar-pop[hidden] { display: none; }
+
+.sky-ring { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+.sky-head { position: relative; display: flex; align-items: flex-end; justify-content: space-between; height: 52px; padding: 0 4px; }
+.sky-head h2 { display: flex; align-items: flex-end; gap: 10px; margin: 0; }
+.sky-month { font: 500 32px/1 var(--font-display); letter-spacing: .08em; }
+.sky-year { font: 400 13px/1.5 var(--font-display); color: rgba(226, 232, 250, .6); letter-spacing: .12em; }
+.sky-tools { display: flex; align-items: center; gap: 4px; align-self: center; }
+.sky-moon { margin-right: 8px; filter: drop-shadow(0 0 7px rgba(240, 226, 190, .45)); }
+.sky-week { position: relative; display: grid; grid-template-columns: repeat(7, 48px); height: 22px; margin-top: 14px; align-items: center; text-align: center; font-size: 11.5px; letter-spacing: .1em; color: rgba(214, 222, 246, .46); }
+.sky-grid { position: relative; display: grid; grid-template-columns: repeat(7, 48px); grid-auto-rows: 50px; width: 336px; }
+.sky-field { position: absolute; inset: 0; overflow: visible; pointer-events: none; }
+.sky-foot { position: relative; display: flex; align-items: center; justify-content: space-between; margin-top: 10px; padding: 0 4px; font-size: 12px; color: rgba(222, 229, 249, .66); }
+
+.sky-grid .cal-day { color: rgba(208, 218, 246, .42); }
+.sky-grid .cal-day[data-day] { color: rgba(232, 238, 255, .86); }
+.sky-grid .cal-day[data-today="true"] { color: #ffd9bb; }
+.sky-grid .cal-day span { position: absolute; left: 0; right: 0; top: 29px; text-align: center; font: 400 12px/1.2 var(--font-body); font-variant-numeric: tabular-nums; }
+.sky-grid .cal-day[data-today="true"]::after {
+  left: var(--star-x); top: var(--star-y); width: 31px; height: 31px; margin: -16px 0 0 -16px;
+  border-color: rgba(255, 199, 158, .72);
+}
+
+.cal-nav {
+  width: 28px; height: 28px; padding: 0; border: 0; border-radius: 50%; display: grid; place-items: center;
+  background: transparent; color: rgba(226, 232, 250, .62); font-size: 14px; cursor: pointer;
+  transition: background var(--motion-fast), color var(--motion-fast);
+}
+.cal-nav:hover { background: var(--glass-hover); color: var(--ink); }
+.cal-nav.next .icon { transform: scaleX(-1); }
+
+/* 海棠的月历沿用这几个格子 */
+.cal-plaque { display: flex; align-items: center; justify-content: space-between; height: 36px; }
+.cal-plaque h2 { font: 500 var(--text-md)/1 var(--font-display); letter-spacing: .06em; font-variant-numeric: lining-nums; }
+.cal-week, .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); }
+.cal-week { height: 24px; align-items: center; color: var(--ink-faint); font-size: var(--text-xs); text-align: center; }
+.cal-grid { grid-auto-rows: 42px; }
+
+.cal-day {
+  position: relative; padding: 0; border: 0; display: grid; place-items: center;
+  background: transparent; color: var(--ink-faint); font: 400 var(--text-sm)/1 var(--font-body); font-variant-numeric: lining-nums;
+  cursor: pointer;
+}
+.cal-day span { position: relative; }
+.cal-day:disabled { cursor: default; }
+.cal-day[data-day] { color: var(--ink); }
+.cal-day[data-out="true"] { opacity: .38; }
+
+.cal-star {
+  position: absolute; left: var(--star-x); top: var(--star-y); width: var(--star-box); height: var(--star-box); margin: calc(var(--star-box) / -2) 0 0 calc(var(--star-box) / -2); border-radius: 50%;
+  background: radial-gradient(circle, var(--star-core) 0%, var(--star-edge) 45%, transparent 72%);
+  transition: transform var(--motion-fast) var(--ease-out);
+}
+.cal-star svg { display: block; overflow: visible; }
+.cal-star path { fill: #f4fbff; }
+.cal-star circle { fill: #fff; }
+.cal-star[data-level="1"] { --star-box: 20px; --star-core: rgba(159, 220, 255, .5); --star-edge: rgba(127, 180, 255, .13); }
+.cal-star[data-level="2"] { --star-box: 28px; --star-core: rgba(159, 220, 255, .5); --star-edge: rgba(127, 180, 255, .13); }
+.cal-star[data-level="3"] { --star-box: 38px; --star-core: rgba(159, 220, 255, .5); --star-edge: rgba(127, 180, 255, .13); }
+.cal-star[data-level="4"] { --star-box: 52px; --star-core: rgba(159, 220, 255, .5); --star-edge: rgba(127, 180, 255, .13); }
+.cal-day[data-today="true"] .cal-star { --star-core: rgba(255, 199, 158, .6); --star-edge: rgba(255, 176, 126, .14); }
+.cal-day[data-today="true"] .cal-star path { fill: #ffe3c8; }
+.cal-day:hover:not(:disabled) .cal-star { transform: scale(1.18); }
+.cal-day[data-today="true"]::after {
+  content: ""; position: absolute; left: 50%; top: 50%; width: 34px; height: 34px; margin: -17px 0 0 -17px;
+  border: 1px solid var(--accent); border-radius: 50%; pointer-events: none;
+}
+.cal-day:focus-visible { outline: 2px solid var(--accent); outline-offset: -3px; box-shadow: none; border-radius: var(--radius-sm); }
+
+.cal-foot { display: flex; align-items: center; justify-content: space-between; margin-top: var(--space-1); color: var(--ink-muted); font-size: var(--text-xs); }
+.cal-today {
+  height: 28px; padding: 0 14px; border: 1px solid rgba(196, 210, 255, .2); border-radius: 14px;
+  background: transparent; color: #e8edf9; font-size: 12px; cursor: pointer;
+  transition: background var(--motion-fast), border-color var(--motion-fast);
+}
+.cal-today:hover { border-color: var(--line-strong); background: var(--glass-hover); }

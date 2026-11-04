@@ -1,0 +1,135 @@
+{
+  "maxDevicePixelRatio": 1.5,
+  "horizon": 0.4,
+  "peakX": 0.66,
+  "terrainAspect": 6.0,
+  "terrain": [
+    "./assets/lake/terrain-a.png",
+    "./assets/lake/terrain-b.png"
+  ],
+  "fallback": "./assets/lake/fallback-night.jpg",
+  "ripple": {
+    "maximum": 12,
+    "voiceEveryMs": 520,
+    "voiceThreshold": 0.05,
+    "pointerEveryMs": 260,
+    "lifetime": 7
+  },
+  "voice": {
+    "attackHalfLifeMs": 60,
+    "releaseHalfLifeMs": 420
+  },
+  "frame": {
+    "activeFps": 60,
+    "idleFps": 30,
+    "blurredFps": 20
+  },
+  "parallaxStrength": 1.0,
+  "periods": [
+    {
+      "id": "dawn",
+      "label": "清晨",
+      "skyTop": "#8ea9dc",
+      "skyMid": "#c7d3ee",
+      "skyLow": "#ffdcd8",
+      "skyHorizon": "#ffe6c4",
+      "ambient": "#b3c0e6",
+      "key": "#c98f78",
+      "haze": "#f4d6d6",
+      "snow": "#fbf6f6",
+      "rock": "#58546f",
+      "waterDeep": "#8fb3d9",
+      "waterShallow": "#cfe6ec",
+      "glow": "#ffc79e",
+      "sun": [
+        0.26,
+        0.46,
+        0.5,
+        0.42
+      ],
+      "stars": 0.05,
+      "clouds": 0.3,
+      "sparkle": 0.5,
+      "glint": 0.08
+    },
+    {
+      "id": "noon",
+      "label": "正午",
+      "skyTop": "#71bfe3",
+      "skyMid": "#aadfee",
+      "skyLow": "#d8f2f6",
+      "skyHorizon": "#eefafa",
+      "ambient": "#b9d4e6",
+      "key": "#8d877c",
+      "haze": "#cfeaf1",
+      "snow": "#ffffff",
+      "rock": "#4f6079",
+      "waterDeep": "#3ba6c2",
+      "waterShallow": "#a4e4e8",
+      "glow": "#ffffff",
+      "sun": [
+        0.05,
+        0.96,
+        0.44,
+        0.62
+      ],
+      "stars": 0.0,
+      "clouds": 0.5,
+      "sparkle": 1.0,
+      "glint": 0.2
+    },
+    {
+      "id": "dusk",
+      "label": "傍晚",
+      "skyTop": "#16225a",
+      "skyMid": "#3f4288",
+      "skyLow": "#b07f98",
+      "skyHorizon": "#ffbe86",
+      "ambient": "#4a5396",
+      "key": "#c86a4a",
+      "haze": "#b98296",
+      "snow": "#dfe2f4",
+      "rock": "#232340",
+      "waterDeep": "#232b63",
+      "waterShallow": "#5f61a0",
+      "glow": "#ffa56e",
+      "sun": [
+        0.26,
+        0.41,
+        0.62,
+        0.34
+      ],
+      "stars": 0.3,
+      "clouds": 0.22,
+      "sparkle": 0.7,
+      "glint": 0.08
+    },
+    {
+      "id": "night",
+      "label": "夜晚",
+      "skyTop": "#050a1c",
+      "skyMid": "#121b44",
+      "skyLow": "#3d3a70",
+      "skyHorizon": "#c9937f",
+      "ambient": "#34477f",
+      "key": "#46588f",
+      "haze": "#544a7d",
+      "snow": "#c6d2ec",
+      "rock": "#0c1026",
+      "waterDeep": "#050a1c",
+      "waterShallow": "#10193f",
+      "glow": "#d99a78",
+      "sun": [
+        0.28,
+        0.4,
+        0.3,
+        0.42
+      ],
+      "stars": 1.0,
+      "clouds": 0.0,
+      "sparkle": 0.42,
+      "glint": 0.04
+    }
+  ],
+  "terrainHeight": 0.47
+}
