@@ -14,6 +14,8 @@
 
 ## 安装与启动
 
+从 [GitHub Releases 下载 0.1.0 预览版](https://github.com/naname737373naname73-cmyk/QuanShuo/releases/tag/v0.1.0)：一般用户选择 `QuanShuo-Setup.exe`；希望解压即用时选择 `QuanShuo-portable.zip`。页面上的 `Source code` 是开发源码，不是安装包。
+
 ### 便携版
 
 1. 解压 `QuanShuo-portable.zip`。
