@@ -57,6 +57,7 @@ public abstract class RecordingSurface : Form
     private Rectangle haloBounds;
     private Size cutSize;
     private readonly RecordingActions actions;
+    private readonly RecordingPauseHotkey pauseShortcut;
     private CrabapplePrint? print;
     private readonly TaskCompletionSource finished = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private readonly Dictionary<(float Scale, bool Paper), Font> transcriptFonts = [];
@@ -67,6 +68,7 @@ public abstract class RecordingSurface : Form
     private bool quietMode;
     private bool reduceMotion;
     private bool pauseSpaceHeld;
+    private bool captureStopped;
     private float targetLevel;
     private float smoothLevel;
     private double lastLevelAt;
@@ -75,6 +77,16 @@ public abstract class RecordingSurface : Form
     {
         record = initialRecord;
         this.actions = actions;
+        pauseShortcut = new RecordingPauseHotkey();
+        pauseShortcut.Pressed += (_, _) =>
+        {
+            if (WantsGlobalPauseShortcut)
+            {
+                ToggleRecordingPause();
+            }
+            else SyncPauseShortcut();
+        };
+        pauseShortcut.AvailabilityChanged += (_, _) => RefreshRecordingHint();
         AutoScaleMode = AutoScaleMode.None;
         FormBorderStyle = FormBorderStyle.None;
         StartPosition = FormStartPosition.Manual;
@@ -91,13 +103,15 @@ public abstract class RecordingSurface : Form
         transcript.AccessibleName = "转写文字";
         transcript.AccessibleDescription = "点击或按 Tab 编辑文字；编辑时空格用于输入，不会暂停录音。";
         transcript.TabIndex = 1;
-        transcript.GotFocus += (_, _) => RefreshRecordingHint();
-        transcript.LostFocus += (_, _) => RefreshRecordingHint();
+        transcript.GotFocus += (_, _) => { SyncPauseShortcut(); RefreshRecordingHint(); };
+        transcript.LostFocus += (_, _) => { QueuePauseShortcutSync(); RefreshRecordingHint(); };
         transcript.Committed += (_, _) => OnTextCommitted();
         pauseButton.Text = "暂停";
         pauseButton.AccessibleName = "暂停录音，空格键";
         pauseButton.TabIndex = 0;
         pauseButton.Click += (_, _) => ToggleRecordingPause();
+        pauseButton.EnabledChanged += (_, _) => SyncPauseShortcut();
+        pauseButton.GotFocus += (_, _) => SyncPauseShortcut();
         closeButton.TabIndex = 9;
         retryButton.TabIndex = 5;
         retryButton.Text = "重新转写";
@@ -132,6 +146,16 @@ public abstract class RecordingSurface : Form
     internal Form? Halo => halo;
 
     public string RecordId => record.Id;
+
+    /// <summary>Coordinator stops the microphone before ASR flush/save completes.</summary>
+    public void NotifyRecordingStopping()
+    {
+        if (!recording) return;
+        captureStopped = true;
+        SyncPauseShortcut();
+    }
+
+    protected bool EditingTranscript => IsHandleCreated && GetForegroundWindow() == Handle && transcript.ContainsFocus;
 
     /// <summary>当前这一条录音的文字，给协调器合并识别结果用。</summary>
     public string MergeRecognized(string recognized, bool sentenceEnd) => transcript.Merge(recognized, sentenceEnd);
@@ -182,7 +206,7 @@ public abstract class RecordingSurface : Form
         else spoken.Start();
         pauseButton.Text = value ? "继续" : "暂停";
         pauseButton.AccessibleName = value ? "继续录音，空格键" : "暂停录音，空格键";
-        if (!hasError) SetStatus(value ? PausedStatus : ListeningStatus);
+        RefreshRecordingHint();
         SyncRipple();
         Invalidate(rippleBounds);
         Invalidate(headingBounds);
@@ -192,6 +216,7 @@ public abstract class RecordingSurface : Form
     {
         recording = false;
         saving = false;
+        SyncPauseShortcut();
         spoken.Stop();
         secondTimer.Stop();
         SyncRipple();
@@ -289,12 +314,32 @@ public abstract class RecordingSurface : Form
 
     private void RefreshRecordingHint()
     {
-        if (recording && !saving && !hasError) SetStatus(paused ? PausedStatus : ListeningStatus);
+        if (recording && !saving && !hasError)
+            SetStatus(captureStopped ? "正在结束并保存…" : pauseShortcut.RegistrationFailed ? "空格被占用，请点暂停/继续" : paused ? PausedStatus : ListeningStatus);
+    }
+
+    private bool WantsGlobalPauseShortcut => Visible && IsHandleCreated && recording && !captureStopped && !saving && !IsDisposed && !Disposing &&
+        pauseButton.Enabled && !EditingTranscript;
+
+    private void SyncPauseShortcut()
+    {
+        if (pauseShortcut is null) return; // Form can raise visibility events while being constructed.
+        bool enabled = WantsGlobalPauseShortcut;
+        // Finishing can move focus into the editor while a local Space is held.
+        // Keep consuming that key's release so it cannot activate another control.
+        if (recording && EditingTranscript) pauseSpaceHeld = false;
+        pauseShortcut.SetEnabled(enabled);
+        RefreshRecordingHint();
+    }
+
+    private void QueuePauseShortcutSync()
+    {
+        if (IsHandleCreated && !IsDisposed && !Disposing) BeginInvoke(SyncPauseShortcut);
     }
 
     private void ToggleRecordingPause()
     {
-        if (recording && !saving && pauseButton.Enabled) actions.TogglePause();
+        if (recording && !captureStopped && !saving && pauseButton.Enabled) actions.TogglePause();
     }
 
     protected override bool ProcessKeyPreview(ref Message message)
@@ -311,7 +356,7 @@ public abstract class RecordingSurface : Form
         {
             pauseSpaceHeld = true;
             // 截图可能由仍按着的空格开启，系统重复消息不能把新录音立刻暂停。
-            if ((message.LParam.ToInt64() & KeyWasAlreadyDown) == 0) ToggleRecordingPause();
+            if (!pauseShortcut.WaitingForRelease && (message.LParam.ToInt64() & KeyWasAlreadyDown) == 0) ToggleRecordingPause();
             return true;
         }
         return base.ProcessKeyPreview(ref message);
@@ -321,6 +366,21 @@ public abstract class RecordingSurface : Form
     {
         pauseSpaceHeld = false;
         base.OnDeactivate(e);
+        // WinForms may retain the text control as its logical ActiveControl while
+        // Windows has moved keyboard focus to another application.
+        QueuePauseShortcutSync();
+    }
+
+    protected override void OnActivated(EventArgs e)
+    {
+        base.OnActivated(e);
+        SyncPauseShortcut();
+    }
+
+    protected override void OnHandleDestroyed(EventArgs e)
+    {
+        pauseShortcut?.SetEnabled(false);
+        base.OnHandleDestroyed(e);
     }
 
     /// <summary>海棠题签的上沿：圆点、状态和关闭按钮。返回文字从哪里开始，出错时状态占两行，文字往下让。</summary>
@@ -381,6 +441,7 @@ public abstract class RecordingSurface : Form
         if (!recording) return true;
         OnFinishing();
         saving = true;
+        SyncPauseShortcut();
         Invalidate(headingBounds);
         SetStatus("正在结束并保存…");
         try
@@ -395,6 +456,7 @@ public abstract class RecordingSurface : Form
             Invalidate(headingBounds);
             SetError("保存没有完成：" + exception.Message);
             OnFinishFailed();
+            SyncPauseShortcut();
             return false;
         }
     }
@@ -443,6 +505,7 @@ public abstract class RecordingSurface : Form
         ApplyFrame();
         CutCorners();
         RefreshBackdrop();
+        SyncPauseShortcut();
     }
 
     protected override void OnSizeChanged(EventArgs e)
@@ -527,6 +590,7 @@ public abstract class RecordingSurface : Form
         CutCorners();
         RefreshBackdrop();
         SyncHalo();
+        SyncPauseShortcut();
         Invalidate(true);
     }
 
@@ -550,6 +614,7 @@ public abstract class RecordingSurface : Form
         base.OnVisibleChanged(e);
         SyncRipple();
         SyncHalo();
+        SyncPauseShortcut();
     }
 
     protected override void OnFormClosing(FormClosingEventArgs e)
@@ -583,6 +648,7 @@ public abstract class RecordingSurface : Form
         if (disposing)
         {
             NativeTheme.SkinChanged -= OnSkinChanged;
+            pauseShortcut.Dispose();
             saveTimer.Dispose();
             rippleTimer.Dispose();
             secondTimer.Dispose();
@@ -823,6 +889,9 @@ public abstract class RecordingSurface : Form
 
     [System.Runtime.InteropServices.DllImport("gdi32.dll")]
     private static extern IntPtr CreateRoundRectRgn(int left, int top, int right, int bottom, int width, int height);
+
+    [System.Runtime.InteropServices.DllImport("user32.dll")]
+    private static extern IntPtr GetForegroundWindow();
 
     [System.Runtime.InteropServices.DllImport("user32.dll")]
     private static extern int SetWindowRgn(IntPtr window, IntPtr region, [System.Runtime.InteropServices.MarshalAs(System.Runtime.InteropServices.UnmanagedType.Bool)] bool redraw);

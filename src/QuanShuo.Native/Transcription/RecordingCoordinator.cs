@@ -46,6 +46,7 @@ public sealed class RecordingCoordinator : IAsyncDisposable
     }
 
     public event EventHandler<QuanShuoRecord>? Started;
+    public event EventHandler<string>? Stopping;
     public event EventHandler<QuanShuoRecord>? Finished;
     public event EventHandler<QuanShuoRecord>? TranscriptChanged;
     public event EventHandler<float>? LevelChanged;
@@ -189,6 +190,12 @@ public sealed class RecordingCoordinator : IAsyncDisposable
     {
         // 用户结束录音时立即关闭麦克风，即使本地模型还在加载。
         recorder?.Stop();
+        if (current is { } stopping)
+        {
+            void Notify() => Stopping?.Invoke(this, stopping.Id);
+            if (uiContext is null || ReferenceEquals(SynchronizationContext.Current, uiContext)) Notify();
+            else Post(Notify);
+        }
         // 刚打开就结束时连接还在建立，要等它有结果，否则两边同时操作同一条连接
         if (startup is { } starting) await starting.Task.WaitAsync(cancellationToken);
         await finishLock.WaitAsync(cancellationToken);

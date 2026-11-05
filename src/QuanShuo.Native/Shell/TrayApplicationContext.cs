@@ -88,6 +88,11 @@ public sealed class TrayApplicationContext : ApplicationContext
             historyWindow?.NotifyLevel(value);
         };
         recordingCoordinator.PauseChanged += (_, state) => activeSurface?.SetPaused(state.Paused, state.Automatic);
+        recordingCoordinator.Stopping += (_, id) =>
+        {
+            foreach (RecordingSurface? surface in new RecordingSurface?[] { recordingCard, speechWindow })
+                if (surface is { IsDisposed: false } && surface.RecordId == id) surface.NotifyRecordingStopping();
+        };
         recordingCoordinator.Finished += async (_, record) =>
         {
             QuanShuoRecord visibleRecord = record;

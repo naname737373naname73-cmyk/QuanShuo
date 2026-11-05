@@ -12,10 +12,12 @@ internal static class Program
     private static int checks;
 
     [STAThread]
-    private static int Main()
+    private static int Main(string[] args)
     {
         Application.SetHighDpiMode(HighDpiMode.PerMonitorV2);
         Application.EnableVisualStyles();
+        if (args.Length == 2 && args[0] == "--keyboard-target") return GlobalSpaceChecks.RunTarget(args[1]);
+        if (args.Contains("--global-space")) return GlobalSpaceChecks.Run(args.Contains("--baseline"));
         // Offline PCM fixtures, synthetic windows and coordinator callbacks; no microphone, clipboard, user settings or network.
         // The transparent windows briefly take keyboard focus; run this suite on an interactive Windows desktop.
         try
