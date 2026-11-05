@@ -1,0 +1,5 @@
+blank_issues_enabled: true
+contact_links:
+  - name: 安全问题反馈说明
+    url: https://github.com/naname737373naname73-cmyk/QuanShuo/security/policy
+    about: 涉及凭据泄露、越权或其他安全问题时，先阅读说明，不要公开敏感细节。

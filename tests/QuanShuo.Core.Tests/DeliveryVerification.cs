@@ -2,6 +2,8 @@ using System.IO.Compression;
 using System.Reflection.Metadata;
 using System.Reflection.PortableExecutable;
 using System.Security.Cryptography;
+using System.Text;
+using System.Text.RegularExpressions;
 
 // Read bundles/PE resources as bytes. Never load or execute the application/installer.
 internal static class DeliveryVerification
@@ -37,6 +39,24 @@ internal static class DeliveryVerification
         zipped.CopyTo(zippedBytes);
         Equal(portableBytes, zippedBytes.ToArray(), "Portable ZIP");
         Console.WriteLine("PASS ZIP executable matches portable SHA-256");
+        using (var entry = zip.GetEntry("README.md")!.Open())
+        using (var readmeBytes = new MemoryStream())
+        {
+            entry.CopyTo(readmeBytes);
+            byte[] readme = readmeBytes.ToArray();
+            string text = Encoding.UTF8.GetString(readme);
+            foreach (Match link in Regex.Matches(text, @"\]\(([^\s)]+)\)"))
+            {
+                string target = link.Groups[1].Value;
+                if (target.StartsWith('#') || Uri.TryCreate(target, UriKind.Absolute, out _)) continue;
+                if (zip.GetEntry(target.Split('#')[0]) is null)
+                    throw new InvalidDataException("Packaged README link is missing: " + target);
+            }
+            if (text.Contains("{{VERSION}}", StringComparison.Ordinal)) throw new InvalidDataException("Unresolved README version placeholder.");
+            Equal(File.ReadAllBytes("artifacts/package/README.md"), readme, "Packaged README");
+            Equal(readme, ReadResource(installerAssembly, "README.md"), "Installer README");
+        }
+        Console.WriteLine("PASS installed/ZIP README matches and its local links exist in the package");
         foreach (string file in new[] { "LICENSE", "THIRD_PARTY_NOTICES.md" })
         {
             byte[] source = File.ReadAllBytes(file);
@@ -65,6 +85,21 @@ internal static class DeliveryVerification
             Console.WriteLine("PASS application, installer and ZIP match source: " + file);
         }
         Console.WriteLine($"Portable SHA-256: {Convert.ToHexString(SHA256.HashData(portableBytes))}");
+        var releaseFiles = new Dictionary<string, string>
+        {
+            ["QuanShuo-portable.zip"] = "artifacts/package/QuanShuo-portable.zip",
+            ["QuanShuo-Setup.exe"] = "artifacts/installer/QuanShuo-Setup.exe",
+        };
+        foreach (string line in File.ReadAllLines("artifacts/package/SHA256SUMS.txt"))
+        {
+            string[] parts = line.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+            if (parts.Length != 2 || !releaseFiles.Remove(parts[1], out string? path))
+                throw new InvalidDataException("Unknown or duplicate checksum entry.");
+            string actual = Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(path)));
+            if (!actual.Equals(parts[0], StringComparison.OrdinalIgnoreCase)) throw new InvalidDataException("Release checksum mismatch: " + parts[1]);
+        }
+        if (releaseFiles.Count != 0) throw new InvalidDataException("Release checksum entry missing.");
+        Console.WriteLine("PASS SHA256SUMS covers both release downloads and matches their bytes");
     }
 
     private static byte[] ReadResource(byte[] assembly, string name)

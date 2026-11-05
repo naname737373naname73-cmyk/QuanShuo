@@ -112,7 +112,7 @@ npm.cmd --prefix frontend run test:local-asr
 npm.cmd --prefix frontend run test:local-asr-races
 ```
 
-The 34 local tests use a localhost WebSocket fixture, synthetic WAVs, isolated
+The 50 local tests use a localhost WebSocket fixture, synthetic WAVs, isolated
 records and native editor controls. They do not use a microphone, model, cloud
 key, private recording or real desktop screenshot. They cover protocol errors,
 cancellation, cumulative text, retries, failed persistence, queued/deferred final
@@ -120,7 +120,7 @@ text, recording failure, bounded draining, close/save races, capture reentry and
 the application CLI. Some coordinator scenarios set internal fields by reflection
 to reach recording states without opening a microphone; this is not hardware QA.
 
-The two-skin UI suite and seven settings race cases run headlessly. The latter
+The two-skin UI suite and sixteen settings race cases run headlessly. The latter
 uses delayed bridge replies to verify configuration snapshots, stale callbacks,
 duplicate test prevention, save ordering and late settings reads.
 

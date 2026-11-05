@@ -29,7 +29,10 @@ try {
         -p:DebugSymbols=false
     if ($LASTEXITCODE -ne 0) { throw 'Native publish failed.' }
 
-    Copy-Item (Join-Path $root 'README.md') (Join-Path $package 'README.md') -Force
+    [xml]$versionProps = Get-Content (Join-Path $root 'Directory.Build.props') -Raw
+    $version = [string]$versionProps.Project.PropertyGroup.Version
+    $readme = (Get-Content (Join-Path $root 'docs\package-readme.md') -Raw -Encoding UTF8).Replace('{{VERSION}}', $version)
+    [System.IO.File]::WriteAllText((Join-Path $package 'README.md'), $readme, [System.Text.UTF8Encoding]::new($false))
     $licenseNames = @('LICENSE', 'THIRD_PARTY_NOTICES.md')
     foreach ($name in $licenseNames) {
         Copy-Item (Join-Path $root $name) (Join-Path $package $name) -Force
@@ -67,9 +70,15 @@ try {
         if ($LASTEXITCODE -ne 0) { throw 'Installer publish failed.' }
     }
 
+    $releaseFiles = @((Join-Path $package 'QuanShuo-portable.zip'))
+    if (-not $SkipInstaller) { $releaseFiles += Join-Path $installer 'QuanShuo-Setup.exe' }
+    $checksums = $releaseFiles | ForEach-Object { "{0}  {1}" -f (Get-FileHash -LiteralPath $_ -Algorithm SHA256).Hash.ToLowerInvariant(), [System.IO.Path]::GetFileName($_) }
+    [System.IO.File]::WriteAllLines((Join-Path $package 'SHA256SUMS.txt'), [string[]]$checksums, [System.Text.UTF8Encoding]::new($false))
+
     Write-Output "Portable exe: $publish\QuanShuo.exe"
     Write-Output "Portable ZIP: $package\QuanShuo-portable.zip"
     Write-Output "Setup exe: $installer\QuanShuo-Setup.exe"
+    Write-Output "Checksums: $package\SHA256SUMS.txt"
 } finally {
     Pop-Location
 }

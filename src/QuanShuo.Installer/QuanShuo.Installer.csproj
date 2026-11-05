@@ -14,7 +14,7 @@
     <EmbeddedResource Include="..\..\artifacts\publish\portable\QuanShuo.exe">
       <LogicalName>QuanShuo.exe</LogicalName>
     </EmbeddedResource>
-    <EmbeddedResource Include="..\..\README.md">
+    <EmbeddedResource Include="..\..\artifacts\package\README.md">
       <LogicalName>README.md</LogicalName>
     </EmbeddedResource>
     <EmbeddedResource Include="..\..\LICENSE" LogicalName="LICENSE" />

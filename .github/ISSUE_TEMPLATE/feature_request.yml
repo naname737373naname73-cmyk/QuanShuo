@@ -1,0 +1,21 @@
+name: 提一个建议
+description: 说说你希望圈说帮你解决什么问题。
+title: "[建议] "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        不需要写技术方案，描述实际使用场景就好。
+        涉及安全漏洞时，请先看[安全反馈说明](https://github.com/naname737373naname73-cmyk/QuanShuo/security/policy)，不要公开敏感细节。
+  - type: textarea
+    id: problem
+    attributes:
+      label: 你遇到了什么不方便？
+      description: 在什么情况下，会希望圈说多做一点什么？
+    validations:
+      required: true
+  - type: textarea
+    id: idea
+    attributes:
+      label: 你希望怎样改进？（可选）
+      description: 可以描述理想的操作方式，也可以附不含私人内容的示意图。

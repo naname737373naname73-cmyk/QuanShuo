@@ -2,11 +2,11 @@
 
 **文字说明适用版本：0.1.2 开发预览版 · Windows 10 / 11 x64 · 更新于 2026-11-06**
 
-当前源码已更新到 `0.1.2`，尚未发布到 GitHub Releases；下方公开安装包仍为 `v0.1.1`。PDF 和六张说明图也仍对应 `0.1.1`，新版全局空格行为请以本文文字为准。
+当前安装包为 `0.1.2`。PDF 和六张说明图仍对应 `0.1.1`，新版全局空格行为请以本文文字为准。
 
 圈说把屏幕上的一块内容、你说的话和来源信息放进同一条记录。你可以把它复制给 AI，也可以只把语音变成文字。记录保存在自己的电脑上。
 
-[下载安装包](https://github.com/naname737373naname73-cmyk/QuanShuo/releases/tag/v0.1.1) · [下载图文 PDF](https://github.com/naname737373naname73-cmyk/QuanShuo/releases/download/v0.1.1/QuanShuo-Guide-0.1.1.pdf) · [下载六张说明图](https://github.com/naname737373naname73-cmyk/QuanShuo/releases/download/v0.1.1/QuanShuo-Guide-Images-0.1.1.zip) · [反馈问题](https://github.com/naname737373naname73-cmyk/QuanShuo/issues)
+[下载安装包](https://github.com/naname737373naname73-cmyk/QuanShuo/releases/tag/v0.1.2) · [下载图文 PDF](https://github.com/naname737373naname73-cmyk/QuanShuo/releases/download/v0.1.1/QuanShuo-Guide-0.1.1.pdf) · [下载六张说明图](https://github.com/naname737373naname73-cmyk/QuanShuo/releases/download/v0.1.1/QuanShuo-Guide-Images-0.1.1.zip) · [反馈问题](https://github.com/naname737373naname73-cmyk/QuanShuo/issues)
 
 ![圈说：能解决什么问题](images/01-why.png)
 
@@ -78,7 +78,7 @@
 | 在圈说文字框编辑时 | Space / Shift + Enter | 输入空格 / 换行 |
 | 录音窗口 | Enter | 结束；语音输入窗口会尝试贴回目标 |
 
-圈选和说话的两个入口快捷键可以在设置中修改。和其他软件冲突时，换一组即可。临时空格使用上述规则；公开的 `v0.1.1` 只在录音窗口内处理空格。
+圈选和说话的两个入口快捷键可以在设置中修改。和其他软件冲突时，换一组即可。临时空格使用上述规则；旧版 `v0.1.1` 只在录音窗口内处理空格。
 
 ## 四、想用本地语音识别，让 AI 帮你装
 

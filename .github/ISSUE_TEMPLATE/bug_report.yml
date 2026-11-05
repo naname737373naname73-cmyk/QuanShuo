@@ -1,0 +1,47 @@
+name: 使用中遇到问题
+description: 告诉我们哪里没有按预期工作，不需要懂技术术语。
+title: "[问题] "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        请不要上传 API Key、私人录音、未脱敏截图或完整配置文件；截图前遮住私人内容。
+        如果是疑似凭据泄露、越权等安全问题，请先看[安全反馈说明](https://github.com/naname737373naname73-cmyk/QuanShuo/security/policy)，不要在这里公开细节。
+  - type: input
+    id: version
+    attributes:
+      label: 圈说版本
+      description: 可以看下载页的版本号；不知道时填写“不确定”即可。
+      placeholder: 例如 0.1.2
+    validations:
+      required: true
+  - type: textarea
+    id: behavior
+    attributes:
+      label: 遇到了什么？
+      description: 简单说说你想做什么，以及实际发生了什么。
+      placeholder: 例如，打开语音窗口后切到浏览器，按空格没有暂停录音。
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: 怎样能再次遇到这个问题？
+      description: 写出操作顺序；如果只是偶尔出现，也请直接说明。
+      placeholder: |
+        1. 打开……
+        2. 点击……
+        3. 出现……
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: 电脑和识别方式（可选）
+      description: 知道多少写多少，不用为反馈专门运行检测命令。
+      placeholder: Windows 10/11；云端或本地识别；模型名称；显卡或内存情况。
+  - type: textarea
+    id: extra
+    attributes:
+      label: 错误文字或补充截图（可选）
+      description: 只附与问题有关的内容，先遮住 Key、私人文字和不想公开的路径。

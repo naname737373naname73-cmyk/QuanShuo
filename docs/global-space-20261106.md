@@ -32,6 +32,6 @@ API 依据：[Microsoft RegisterHotKey 文档](https://learn.microsoft.com/en-us
 
 证据位于本机 `artifacts/global-space/before.json`、`after-final.json`、`global-final.txt`、`legacy-final.txt` 和 `build-final.txt`。测试入口与运行说明见 `tests/QuanShuo.Recording.Tests/README.md`。
 
-另外通过了 50 项本地语音接口回归、6 项核心保存回归、完整前端与原生安装包构建。交付校验逐项比较内嵌前端、程序集、提示词、许可证，以及便携版、安装包和 ZIP 中的程序字节；安装到 `F:\QuanShuo` 后再次比较 SHA-256 和随附文档。结果见同目录 `local-asr-final.log`、`core-final.log`、`delivery-final.log`、`installed-final.json`。旧安装文件备份在 `installed-0.1.1-backup`，记录和模型配置不迁移。本次仅本机更新，未发布 GitHub Release。
+另外通过了 50 项本地语音接口回归、6 项核心保存回归、完整前端与原生安装包构建。交付校验逐项比较内嵌前端、程序集、提示词、许可证，以及便携版、安装包和 ZIP 中的程序字节；原位安装后再次比较 SHA-256 和随附文档。结果见同目录 `local-asr-final.log`、`core-final.log`、`delivery-final.log`、`installed-final.json`。旧安装文件备份在 `installed-0.1.1-backup`，记录和模型配置不迁移。这些记录对应发布前的本机验收；后续公开版本见项目 Releases 与更新记录。
 
 这不是所有应用、管理员窗口、远程桌面或游戏环境的兼容性保证；输入法检查验证组字状态下不截获空格，未代替真实输入法候选选择测试。实际麦克风识别质量不属于本次快捷键修复验证范围。
