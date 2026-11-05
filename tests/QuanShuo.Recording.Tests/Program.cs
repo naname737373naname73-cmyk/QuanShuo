@@ -2,6 +2,7 @@ using System.Reflection;
 using System.Runtime.InteropServices;
 using QuanShuo.Core.Models;
 using QuanShuo.Native.Recording;
+using QuanShuo.Native.Shell;
 
 internal static class Program
 {
@@ -15,12 +16,17 @@ internal static class Program
     {
         Application.SetHighDpiMode(HighDpiMode.PerMonitorV2);
         Application.EnableVisualStyles();
-        // Synthetic windows and callbacks only: no coordinator, microphone, clipboard, user settings or network.
+        // Offline PCM fixtures, synthetic windows and coordinator callbacks; no microphone, clipboard, user settings or network.
         // The transparent windows briefly take keyboard focus; run this suite on an interactive Windows desktop.
         try
         {
-            Run("speech", (record, actions) => new SpeechWindow(record, actions, null, null));
-            Run("card", (record, actions) => new RecordingCard(record, actions));
+            IdlePauseChecks.Run();
+            foreach (string skin in new[] { "starlake", "crabapple" })
+            {
+                NativeTheme.UseSkin(skin);
+                Run(skin + "/speech", (record, actions) => new SpeechWindow(record, actions, null, null));
+                Run(skin + "/card", (record, actions) => new RecordingCard(record, actions));
+            }
             Console.WriteLine($"PASS {checks} checks; no microphone or ASR started.");
             return 0;
         }
@@ -81,18 +87,33 @@ internal static class Program
         Check(name + ": IME space reaches editor", !Preview(surface, Down, 0) && toggles == 2);
         typeof(LiveTextBox).GetField("composing", Hidden)!.SetValue(text, false);
 
+        surface.SetPaused(true, automatic: true);
+        paused = true;
+        Check(name + ": idle pause preserves draft and shows reason", text.Text == before + " " &&
+            (string)typeof(RecordingSurface).GetProperty("statusText", Hidden)!.GetValue(surface)! == "静音已暂停");
+        Key(text, Down, 0);
+        Key(text, Character, 0);
+        Key(text, Up, Repeat);
+        Check(name + ": idle pause does not hijack editor space", toggles == 2 && paused && text.Text == before + "  ");
+        pause.Focus();
+        Key(pause, Down, 0);
+        Key(pause, Up, Repeat);
+        Check(name + ": space resumes after automatic pause", toggles == 3 && !paused &&
+            !(bool)typeof(RecordingSurface).GetProperty("automaticallyPaused", Hidden)!.GetValue(surface)!);
+
         pause.Focus();
         typeof(RecordingSurface).GetField("saving", Hidden)!.SetValue(surface, true);
         Key(pause, Down, 0);
         Key(pause, Up, Repeat);
-        Check(name + ": finalizing does not pause", toggles == 2);
+        surface.SetPaused(true, automatic: true);
+        Check(name + ": finalizing does not pause", toggles == 3 && !paused);
         typeof(RecordingSurface).GetField("saving", Hidden)!.SetValue(surface, false);
 
         // Finish while a shortcut is held: its later release must not activate another action.
         Key(pause, Down, 0);
         surface.SetFinished(record with { Text = text.Text, Status = TranscriptionStatus.Completed });
         Check(name + ": release after finishing is consumed", Preview(surface, Up, Repeat));
-        Check(name + ": finished recording does not toggle", !Preview(surface, Down, 0) && toggles == 3);
+        Check(name + ": finished recording does not toggle", !Preview(surface, Down, 0) && toggles == 4);
         VerifyFinishKey(name, create, Keys.Enter);
         VerifyFinishKey(name, create, Keys.Escape);
     }

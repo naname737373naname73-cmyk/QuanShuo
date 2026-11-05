@@ -19,7 +19,7 @@ internal static class DeliveryVerification
         string[] bundledFrontend = portable.Names.Where(name => name.StartsWith("Frontend/", StringComparison.Ordinal)).ToArray();
         if (bundledFrontend.Length != dist.Length) throw new InvalidDataException("Stale or missing bundled frontend files.");
         Console.WriteLine($"PASS portable Frontend: {dist.Length} files match dist exactly");
-        foreach (string assembly in new[] { "QuanShuo.dll", "QuanShuo.Core.dll" })
+        foreach (string assembly in new[] { "QuanShuo.dll", "QuanShuo.Core.dll", "WebRtcVad.NET.dll" })
         {
             Equal(File.ReadAllBytes($"src/QuanShuo.Native/bin/Release/net10.0-windows/win-x64/{assembly}"), portable.Read(assembly), assembly);
         }

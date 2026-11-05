@@ -277,7 +277,7 @@ public static class InstallerLogic
         using RegistryKey key = Registry.CurrentUser.CreateSubKey(UninstallKey);
         string setup = Path.Combine(directory, "QuanShuo-Setup.exe");
         key.SetValue("DisplayName", "圈说 QuanShuo");
-        key.SetValue("DisplayVersion", "0.1.0");
+        key.SetValue("DisplayVersion", typeof(InstallerLogic).Assembly.GetName().Version?.ToString(3) ?? "0.0.0");
         key.SetValue("Publisher", "QuanShuo");
         key.SetValue("InstallLocation", directory);
         key.SetValue("DisplayIcon", Path.Combine(directory, "QuanShuo.exe"));

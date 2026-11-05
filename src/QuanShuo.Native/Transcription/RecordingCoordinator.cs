@@ -32,7 +32,6 @@ public sealed class RecordingCoordinator : IAsyncDisposable
     private Task? persistenceTask;
     private Exception? providerFailure;
     private string latestText = string.Empty;
-    private bool paused;
     private volatile bool streamingAudio;
     private bool transcribeAfterRecording;
     private TaskCompletionSource? startup;
@@ -50,7 +49,7 @@ public sealed class RecordingCoordinator : IAsyncDisposable
     public event EventHandler<QuanShuoRecord>? Finished;
     public event EventHandler<QuanShuoRecord>? TranscriptChanged;
     public event EventHandler<float>? LevelChanged;
-    public event EventHandler<bool>? PauseChanged;
+    public event EventHandler<RecordingPauseState>? PauseChanged;
     public event EventHandler<string>? Failed;
 
     public bool IsRecording => current is not null;
@@ -89,7 +88,6 @@ public sealed class RecordingCoordinator : IAsyncDisposable
         startup = starting;
         providerFailure = null;
         latestText = record.Text;
-        paused = false;
         string audioPath = store.GetAudioPath(record);
         current = record with { AudioPath = audioPath, Status = TranscriptionStatus.Recording };
         // 100ms 一帧，最多保留约 100 秒待发送音频；完整 WAV 始终由录音器落盘。
@@ -106,6 +104,7 @@ public sealed class RecordingCoordinator : IAsyncDisposable
         recorder.AudioAvailable += OnAudioAvailable;
         recorder.SilenceAvailable += OnSilenceAvailable;
         recorder.RecordingFailed += OnRecorderFailed;
+        recorder.PauseChanged += OnRecorderPauseChanged;
         try
         {
             recorder.Start(audioPath, ResolveMicrophone(configuration.MicrophoneDeviceId));
@@ -162,9 +161,20 @@ public sealed class RecordingCoordinator : IAsyncDisposable
     public void TogglePause()
     {
         if (recorder is null) return;
-        paused = !paused;
-        recorder.Paused = paused;
-        Post(() => PauseChanged?.Invoke(this, paused));
+        recorder.Paused = !recorder.Paused;
+    }
+
+    private void OnRecorderPauseChanged(object? sender, RecordingPauseState state)
+    {
+        var source = sender as WavRecorder;
+        string? recordId = current?.Id;
+        Post(() =>
+        {
+            // 结束、换录音或已经手动继续后，旧回调不能再把界面变成暂停。
+            if (source is null || !ReferenceEquals(source, recorder) || current?.Id != recordId || source.PauseState != state) return;
+            PauseChanged?.Invoke(this, state);
+            if (state.Paused) LevelChanged?.Invoke(this, 0);
+        });
     }
 
     /// <summary>用户在录音中改了文字。之后的保存都以这份为准。</summary>

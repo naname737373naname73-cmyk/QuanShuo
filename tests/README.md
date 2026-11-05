@@ -95,6 +95,17 @@ font-fallback assessment.
 
 ## Local ASR health audit
 
+### Recording and idle pause
+
+`dotnet run --project tests/QuanShuo.Recording.Tests` checks both recording
+surfaces under both skins (64 keyboard/state checks), plus the 60-second silence
+boundary, resets on speech and resume, fragmented PCM, stale coordinator
+notifications, and WAV/keepalive behavior during automatic pause. The real VAD
+is exercised with digital silence and an attributed upstream speech fixture at
+normal and reduced volume. No microphone, real service, user recording or API
+key is used. This does not replace testing different microphones and background
+noise conditions. The delivery verifier also checks the bundled VAD dependency.
+
 ```powershell
 & $dotnet run --project tests/QuanShuo.LocalAsr.Tests
 npm.cmd --prefix frontend run test:local-asr

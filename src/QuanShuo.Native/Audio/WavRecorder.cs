@@ -3,6 +3,7 @@ using NAudio.Wave;
 namespace QuanShuo.Native.Audio;
 
 public sealed record MicrophoneDevice(int Index, string Name);
+public readonly record struct RecordingPauseState(bool Paused, bool Automatic = false);
 
 public sealed class AudioDataEventArgs(byte[] pcm, float level) : EventArgs
 {
@@ -15,7 +16,8 @@ public sealed class WavRecorder : IDisposable
     private readonly object sync = new();
     private WaveIn? waveIn;
     private PcmWaveWriter? writer;
-    private volatile bool paused;
+    private readonly SpeechInactivityMonitor inactivity = new();
+    private RecordingPauseState pauseState;
 
     public event EventHandler<AudioDataEventArgs>? AudioAvailable;
 
@@ -23,11 +25,22 @@ public sealed class WavRecorder : IDisposable
     public event EventHandler<byte[]>? SilenceAvailable;
 
     public event EventHandler<string>? RecordingFailed;
+    public event EventHandler<RecordingPauseState>? PauseChanged;
+
+    public RecordingPauseState PauseState { get { lock (sync) return pauseState; } }
 
     public bool Paused
     {
-        get => paused;
-        set => paused = value;
+        get => PauseState.Paused;
+        set
+        {
+            lock (sync)
+            {
+                if (pauseState.Paused == value) return;
+                if (!value) inactivity.Reset();
+                SetPaused(new(value));
+            }
+        }
     }
 
     public static IReadOnlyList<MicrophoneDevice> GetDevices()
@@ -46,6 +59,8 @@ public sealed class WavRecorder : IDisposable
         lock (sync)
         {
             if (waveIn is not null) throw new InvalidOperationException("已经有一条录音正在进行。");
+            inactivity.Reset();
+            pauseState = default;
             writer = new PcmWaveWriter(path);
             try
             {
@@ -104,20 +119,23 @@ public sealed class WavRecorder : IDisposable
         currentWriter?.Dispose();
     }
 
-    public void Dispose() => Stop();
+    public void Dispose()
+    {
+        Stop();
+        lock (sync) inactivity.Dispose();
+    }
 
     private void OnDataAvailable(object? sender, WaveInEventArgs e)
     {
         if (e.BytesRecorded == 0) return;
-        if (paused)
-        {
-            SilenceAvailable?.Invoke(this, new byte[e.BytesRecorded]);
-            return;
-        }
-
         lock (sync)
         {
             if (writer is null) return;
+            if (pauseState.Paused)
+            {
+                SilenceAvailable?.Invoke(this, new byte[e.BytesRecorded]);
+                return;
+            }
             var pcm = new byte[e.BytesRecorded];
             Buffer.BlockCopy(e.Buffer, 0, pcm, 0, e.BytesRecorded);
             writer.Write(pcm);
@@ -131,8 +149,17 @@ public sealed class WavRecorder : IDisposable
             }
 
             float level = sampleCount == 0 ? 0 : Math.Clamp((float)(Math.Sqrt(squareSum / sampleCount) * 7), 0, 1);
+            bool idle = inactivity.Observe(pcm);
             AudioAvailable?.Invoke(this, new AudioDataEventArgs(pcm, level));
+            if (idle) SetPaused(new(true, Automatic: true));
         }
+    }
+
+    // 调用者持有 sync；通知与暂停状态的改变保持相同次序。
+    private void SetPaused(RecordingPauseState state)
+    {
+        pauseState = state;
+        PauseChanged?.Invoke(this, state);
     }
 
     private void OnRecordingStopped(object? sender, StoppedEventArgs e)

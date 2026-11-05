@@ -115,6 +115,7 @@ public abstract class RecordingSurface : Form
     protected QuanShuoRecord record { get; private set; }
     protected bool recording { get; private set; } = true;
     protected bool paused { get; private set; }
+    protected bool automaticallyPaused { get; private set; }
     protected bool hasError { get; private set; }
     protected string statusText { get; private set; } = string.Empty;
     protected float scale { get; set; } = 1;
@@ -172,15 +173,16 @@ public abstract class RecordingSurface : Form
         SyncRipple();
     }
 
-    public void SetPaused(bool value)
+    public void SetPaused(bool value, bool automatic = false)
     {
-        if (!recording) return;
+        if (!recording || saving) return;
         paused = value;
+        automaticallyPaused = value && automatic;
         if (value) spoken.Stop();
         else spoken.Start();
         pauseButton.Text = value ? "继续" : "暂停";
         pauseButton.AccessibleName = value ? "继续录音，空格键" : "暂停录音，空格键";
-        SetStatus(value ? PausedStatus : ListeningStatus);
+        if (!hasError) SetStatus(value ? PausedStatus : ListeningStatus);
         SyncRipple();
         Invalidate(rippleBounds);
         Invalidate(headingBounds);

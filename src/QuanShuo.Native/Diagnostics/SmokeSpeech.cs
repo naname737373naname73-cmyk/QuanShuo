@@ -112,7 +112,7 @@ public static class SmokeSpeech
             async updated => await coordinator.RetryAsync(updated),
             coordinator.NoteUserText);
         window = new SpeechWindow(record, actions, captured, null);
-        coordinator.PauseChanged += (_, paused) => window.SetPaused(paused);
+        coordinator.PauseChanged += (_, state) => window.SetPaused(state.Paused, state.Automatic);
         coordinator.Finished += (_, completed) => window.SetFinished(completed);
         coordinator.Failed += (_, message) => window.SetError(message);
         coordinator.TextMerger = window.MergeRecognized;

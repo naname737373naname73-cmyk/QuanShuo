@@ -87,7 +87,7 @@ public sealed class TrayApplicationContext : ApplicationContext
             activeSurface?.SetLevel(value);
             historyWindow?.NotifyLevel(value);
         };
-        recordingCoordinator.PauseChanged += (_, paused) => activeSurface?.SetPaused(paused);
+        recordingCoordinator.PauseChanged += (_, state) => activeSurface?.SetPaused(state.Paused, state.Automatic);
         recordingCoordinator.Finished += async (_, record) =>
         {
             QuanShuoRecord visibleRecord = record;

@@ -60,7 +60,7 @@ public sealed class SpeechWindow : RecordingSurface
     public bool IsListening => recording;
 
     protected override string ListeningStatus => transcript.ContainsFocus ? "随时可以改" : NativeTheme.IsCrabapple ? "正在听 · 空格暂停" : "空格暂停";
-    protected override string PausedStatus => transcript.ContainsFocus ? "已暂停，改好点继续" : NativeTheme.IsCrabapple ? "已暂停 · 空格继续" : "空格继续";
+    protected override string PausedStatus => automaticallyPaused ? "静音已暂停" : transcript.ContainsFocus ? "已暂停，改好点继续" : NativeTheme.IsCrabapple ? "已暂停 · 空格继续" : "空格继续";
     protected override CrabapplePrint CreatePrint() => new(PrintOrigin, PrintZoom);
 
     protected override void StyleButtons()
