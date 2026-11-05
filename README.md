@@ -12,9 +12,17 @@
 
 当前仍有双屏混合 DPI、全屏游戏、不同 GPU/驱动和长时间录音等兼容性工作需要持续验证。不同本地模型的资源占用以实际部署为准。问题与建议可提交到 [Issues](https://github.com/naname737373naname73-cmyk/QuanShuo/issues)。
 
+## 使用说明
+
+第一次接触圈说，可以先看 [完整使用说明](docs/guide/README.md)：从能解决什么问题、安装和快捷键，到本地模型、云端识别、历史记录和常见问题。
+
+[下载六页图文 PDF](https://github.com/naname737373naname73-cmyk/QuanShuo/releases/download/v0.1.1/QuanShuo-Guide-0.1.1.pdf) · [下载六张说明图](https://github.com/naname737373naname73-cmyk/QuanShuo/releases/download/v0.1.1/QuanShuo-Guide-Images-0.1.1.zip)
+
+![圈说：圈住屏幕，说出想法](docs/guide/images/01-why.png)
+
 ## 安装与启动
 
-从 [GitHub Releases 下载 0.1.0 预览版](https://github.com/naname737373naname73-cmyk/QuanShuo/releases/tag/v0.1.0)：一般用户选择 `QuanShuo-Setup.exe`；希望解压即用时选择 `QuanShuo-portable.zip`。页面上的 `Source code` 是开发源码，不是安装包。
+从 [GitHub Releases 下载 0.1.1 预览版](https://github.com/naname737373naname73-cmyk/QuanShuo/releases/tag/v0.1.1)：一般用户选择 `QuanShuo-Setup.exe`；希望解压即用时选择 `QuanShuo-portable.zip`。页面上的 `Source code` 是开发源码，不是安装包。
 
 ### 便携版
 
