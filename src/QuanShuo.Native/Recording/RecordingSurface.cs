@@ -11,7 +11,8 @@ public sealed record RecordingActions(
     Action TogglePause,
     Func<QuanShuoRecord, string, Task> SaveText,
     Func<QuanShuoRecord, Task<QuanShuoRecord>> Retry,
-    Action<string> TextEdited);
+    Action<string> TextEdited,
+    Action? Pause = null);
 
 /// <summary>录音卡片和说话悬浮窗共用的部分：无边框外壳、音量、可编辑文字和保存。</summary>
 public abstract class RecordingSurface : Form
@@ -340,6 +341,14 @@ public abstract class RecordingSurface : Form
     private void ToggleRecordingPause()
     {
         if (recording && !captureStopped && !saving && pauseButton.Enabled) actions.TogglePause();
+    }
+
+    protected void PauseRecording()
+    {
+        if (!recording || captureStopped || saving || !pauseButton.Enabled) return;
+        // Production uses an idempotent command: UI pause notifications can still be queued.
+        if (actions.Pause is { } pause) pause();
+        else if (!paused) actions.TogglePause();
     }
 
     protected override bool ProcessKeyPreview(ref Message message)

@@ -165,6 +165,11 @@ public sealed class RecordingCoordinator : IAsyncDisposable
         recorder.Paused = !recorder.Paused;
     }
 
+    public void Pause()
+    {
+        if (recorder is not null) recorder.Paused = true;
+    }
+
     private void OnRecorderPauseChanged(object? sender, RecordingPauseState state)
     {
         var source = sender as WavRecorder;

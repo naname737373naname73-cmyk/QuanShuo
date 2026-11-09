@@ -131,6 +131,12 @@ internal static class IdlePauseChecks
         recorder.PauseChanged += (sender, state) => typeof(RecordingCoordinator).GetMethod("OnRecorderPauseChanged", Hidden)!.Invoke(coordinator, [sender, state]);
         var delivered = new List<RecordingPauseState>();
         coordinator.PauseChanged += (_, state) => delivered.Add(state);
+        coordinator.Pause();
+        coordinator.Pause();
+        Check(recorder.Paused && delivered.Count == 0, "copy pause must be immediate and idempotent before UI notification");
+        context.Drain();
+        Check(delivered.Count == 1 && delivered[0].Paused, "repeated copy must emit only one pause notification");
+        delivered.Clear();
         recorder.Paused = true;
         coordinator.TogglePause();
         context.Drain();

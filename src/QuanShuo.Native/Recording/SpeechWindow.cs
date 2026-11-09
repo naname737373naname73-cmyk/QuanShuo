@@ -40,6 +40,7 @@ public sealed class SpeechWindow : RecordingSurface
         Text = "圈说 · 说话";
         closeButton.AccessibleName = "关闭说话窗口";
         copyButton.Text = "复制";
+        copyButton.AccessibleDescription = "暂停录音并复制当前文字；按空格继续录音。";
         copyButton.Click += (_, _) => CopyOnly();
         sendButton.Click += (_, _) => Deliver();
         Controls.AddRange([closeButton, transcript, pauseButton, copyButton, sendButton, retryButton]);
@@ -271,11 +272,29 @@ public sealed class SpeechWindow : RecordingSurface
 
     private void CopyOnly()
     {
-        if (string.IsNullOrWhiteSpace(transcript.Text)) return;
-        ClipboardService.CopyText(transcript.Text);
-        copyButton.Text = "已复制";
-        // 海棠的字按钮跟着字宽排，多一个字要重新排
-        if (arranged && NativeTheme.IsCrabapple) ArrangeControls();
+        PauseRecording();
+        try
+        {
+            transcript.FlushDeferred();
+            if (string.IsNullOrWhiteSpace(transcript.Text))
+            {
+                copyButton.Text = "无文字";
+                return;
+            }
+            ClipboardService.CopyText(transcript.Text);
+            copyButton.Text = "已复制";
+        }
+        catch (System.Runtime.InteropServices.ExternalException)
+        {
+            copyButton.Text = "复制";
+            SetError("复制没成功，文字还在。请再点一次复制。");
+        }
+        finally
+        {
+            // Copy is a recording action, not an entry into transcript editing.
+            FocusRecordingControls();
+            if (arranged && NativeTheme.IsCrabapple) ArrangeControls();
+        }
     }
 
     private void ShowCopied()

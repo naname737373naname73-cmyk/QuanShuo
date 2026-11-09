@@ -352,7 +352,8 @@ public sealed class TrayApplicationContext : ApplicationContext
                 throw new IOException("记录文件已被移动或删除。请恢复文件后重试；窗口里的文字仍保留。");
         },
         async updated => await recordingCoordinator.RetryAsync(updated),
-        recordingCoordinator.NoteUserText);
+        recordingCoordinator.NoteUserText,
+        recordingCoordinator.Pause);
 
     /// <summary>什么都没说的不留记录，说了的才算一颗星。</summary>
     private async Task FinishSpeechRecordAsync(QuanShuoRecord record)

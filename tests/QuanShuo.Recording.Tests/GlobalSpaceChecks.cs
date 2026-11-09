@@ -85,7 +85,8 @@ internal static class GlobalSpaceChecks
         var record = new QuanShuoRecord { Id = "global-space-audit", Timestamp = DateTimeOffset.Now, AppName = "audit", WindowTitle = "audit", ImagePath = "", MarkdownPath = "", Text = "文字", Status = TranscriptionStatus.Recording };
         int toggles = 0; bool paused = false;
         RecordingSurface? current = null;
-        var actions = new RecordingActions(() => Task.CompletedTask, () => { toggles++; paused = !paused; current!.SetPaused(paused); }, (_, _) => Task.CompletedTask, Task.FromResult, _ => { });
+        var actions = new RecordingActions(() => Task.CompletedTask, () => { toggles++; paused = !paused; current!.SetPaused(paused); }, (_, _) => Task.CompletedTask, Task.FromResult, _ => { },
+            () => { if (!paused) { toggles++; paused = true; current!.SetPaused(true); } });
         await Foreground(targetHandle);
         using var surface = create(record, actions); current = surface;
         surface.Show(); await Task.Delay(200);
@@ -127,6 +128,49 @@ internal static class GlobalSpaceChecks
         previous = toggles; surface.SetPaused(true, automatic: true); paused = true;
         await Press(targetHandle);
         Check(name + ": external Space resumes idle pause", toggles == previous + 1 && !paused);
+
+        if (surface is SpeechWindow speech)
+        {
+            IDataObject? originalClipboard = Clipboard.GetDataObject();
+            try
+            {
+                await Foreground(surface.Handle);
+                editor.Focus();
+                editor.ReplaceAll("复制测试文字");
+                var copy = (Control)typeof(SpeechWindow).GetField("copyButton", Hidden)!.GetValue(speech)!;
+                void ClickCopy()
+                {
+                    copy.Focus();
+                    typeof(Control).GetMethod("OnClick", Hidden)!.Invoke(copy, [EventArgs.Empty]);
+                }
+                previous = toggles;
+                ClickCopy();
+                await Task.Delay(100);
+                Check(name + ": copy pauses and copies visible text", paused && toggles == previous + 1 && Clipboard.GetText() == "复制测试文字");
+                Check(name + ": copy restores recording keyboard focus", pause.Focused && Registered(surface));
+                ClickCopy(); ClickCopy();
+                Check(name + ": repeated copy never resumes", paused && toggles == previous + 1);
+                await Press(surface.Handle);
+                Check(name + ": first Space after copy resumes once", !paused && toggles == previous + 2);
+                await Press(surface.Handle);
+                Check(name + ": second Space after copy pauses once", paused && toggles == previous + 3);
+                await Press(surface.Handle);
+                editor.ReplaceAll("");
+                ClickCopy();
+                Check(name + ": empty copy pauses without erasing clipboard", paused && Clipboard.GetText() == "复制测试文字");
+                editor.Focus();
+                previous = toggles;
+                await Press(surface.Handle);
+                Check(name + ": editing after copy still types Space", editor.Text == " " && toggles == previous);
+                editor.ReplaceAll("复制测试文字");
+            }
+            finally
+            {
+                if (originalClipboard is null) Clipboard.Clear();
+                else Clipboard.SetDataObject(originalClipboard, true);
+            }
+            await Foreground(targetHandle);
+        }
 
         surface.SetFinished(record with { Status = TranscriptionStatus.Incomplete }); await Task.Delay(100);
         beforeText = TargetText().Length; previous = toggles;
@@ -270,6 +314,14 @@ internal static class GlobalSpaceChecks
     private static async Task Foreground(IntPtr handle)
     {
         SetForegroundWindow(handle);
+        if (GetForegroundWindow() != handle)
+        {
+            uint foregroundThread = GetWindowThreadProcessId(GetForegroundWindow(), out _);
+            uint currentThread = GetCurrentThreadId();
+            bool attached = foregroundThread != currentThread && AttachThreadInput(currentThread, foregroundThread, true);
+            try { SetForegroundWindow(handle); }
+            finally { if (attached) AttachThreadInput(currentThread, foregroundThread, false); }
+        }
         for (int n = 0; n < 10 && GetForegroundWindow() != handle; n++) { await Task.Delay(50); SetForegroundWindow(handle); }
         RequireForeground(handle); await Task.Delay(100);
     }
@@ -296,6 +348,9 @@ internal static class GlobalSpaceChecks
     [DllImport("user32.dll")] private static extern uint SendInput(uint count, INPUT[] inputs, int size);
     [DllImport("user32.dll")] private static extern IntPtr GetForegroundWindow();
     [DllImport("user32.dll")] private static extern bool SetForegroundWindow(IntPtr handle);
+    [DllImport("user32.dll")] private static extern uint GetWindowThreadProcessId(IntPtr handle, out uint processId);
+    [DllImport("kernel32.dll")] private static extern uint GetCurrentThreadId();
+    [DllImport("user32.dll")] private static extern bool AttachThreadInput(uint source, uint target, bool attach);
     [DllImport("user32.dll", CharSet = CharSet.Unicode)] private static extern IntPtr SendMessage(IntPtr handle, int message, IntPtr wParam, IntPtr lParam);
     [DllImport("user32.dll", CharSet = CharSet.Unicode, EntryPoint = "SendMessageW")] private static extern IntPtr SendMessageText(IntPtr handle, int message, IntPtr wParam, StringBuilder text);
     [DllImport("user32.dll")] private static extern bool RegisterHotKey(IntPtr window, int id, uint modifiers, uint key);
