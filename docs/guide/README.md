@@ -1,12 +1,12 @@
 # 圈说使用说明
 
-**文字说明适用版本：0.1.3 开发预览版 · Windows 10 / 11 x64 · 更新于 2026-11-18**
+**文字说明适用版本：0.1.4 开发预览版 · Windows 10 / 11 x64 · 更新于 2026-11-18**
 
 PDF 和六张说明图对应 `0.1.1`。暂停／继续键的设置见本页。
 
 圈说把屏幕上的一块内容、你说的话和来源信息放进同一条记录。你可以把它复制给 AI，也可以只把语音变成文字。记录保存在自己的电脑上。
 
-[下载安装包](https://github.com/naname737373naname73-cmyk/QuanShuo/releases/tag/v0.1.3) · [下载图文 PDF](https://github.com/naname737373naname73-cmyk/QuanShuo/releases/download/v0.1.1/QuanShuo-Guide-0.1.1.pdf) · [下载六张说明图](https://github.com/naname737373naname73-cmyk/QuanShuo/releases/download/v0.1.1/QuanShuo-Guide-Images-0.1.1.zip) · [反馈问题](https://github.com/naname737373naname73-cmyk/QuanShuo/issues)
+[下载安装包](https://github.com/naname737373naname73-cmyk/QuanShuo/releases/tag/v0.1.4) · [下载图文 PDF](https://github.com/naname737373naname73-cmyk/QuanShuo/releases/download/v0.1.1/QuanShuo-Guide-0.1.1.pdf) · [下载六张说明图](https://github.com/naname737373naname73-cmyk/QuanShuo/releases/download/v0.1.1/QuanShuo-Guide-Images-0.1.1.zip) · [反馈问题](https://github.com/naname737373naname73-cmyk/QuanShuo/issues)
 
 ![圈说：能解决什么问题](images/01-why.png)
 
@@ -132,6 +132,7 @@ API Key 使用 Windows 当前用户加密保存。不要把 Key 放进反馈截�
 - 搜索原话，或点日历按日期查找。
 - 打开一条记录继续改文字，复制给 AI，或只复制文字。
 - 进入批量选择，使用 Ctrl / Shift 多选；Ctrl + A 全选，Ctrl + C 合并复制，Esc 退出选择。
+- 点日期旁的「选这天」，把勾选范围换成这一天。输入搜索词时，只选择该日的匹配结果。
 - 在转写失败的记录上点 **重新转写**。前提是原录音仍在，并已修复识别配置。
 - 删除到回收站，并通过提示条撤销误删。
 - 在设置里切换星湖、海棠两套外观；希望安静一些时可启用安静模式。

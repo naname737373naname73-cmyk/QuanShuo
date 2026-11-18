@@ -193,6 +193,7 @@ export class App {
       if (this.managing) this.toggleMark(detail.id, detail.shift);
       else this.select(detail.id, detail.ctrl, detail.shift);
     });
+    this.list.addEventListener('selectday', (event) => this.markDay((event as CustomEvent<string>).detail));
     this.list.addEventListener('copy', (event) => void this.copy([(event as CustomEvent<string>).detail], 'ai'));
     this.list.addEventListener('itemhover', (event) => this.scene.setHovered((event as CustomEvent<string | null>).detail));
 
@@ -448,6 +449,15 @@ export class App {
   private markIncomplete(): void {
     this.marked = new Set(this.records.filter((record) => record.status === 'incomplete').map((record) => record.id));
     this.refreshMarks();
+  }
+
+  private markDay(day: string): void {
+    if (!this.managing) return;
+    const ids = this.pickable(this.records.filter((record) => dayKey(record.timestamp) === day)).map((record) => record.id);
+    this.marked = new Set(ids);
+    this.markAnchor = null;
+    this.refreshMarks();
+    if (ids.length === 0) this.toast('这一天没有可选的记录。');
   }
 
   private refreshMarks(): void {

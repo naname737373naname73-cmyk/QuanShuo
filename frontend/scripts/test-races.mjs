@@ -15,7 +15,7 @@ const skin = process.env.QS_SKIN ?? 'starlake';
 const filter = process.argv.slice(2);
 try {
   browser = await chromium.launch({ headless: true, executablePath: ['C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe', 'C:/Program Files/Google/Chrome/Application/chrome.exe'].find(existsSync) });
-  async function run(name, test) {
+  async function run(name, test, recordsPerDay = 0) {
     if (filter.length && !filter.includes(name)) return;
     const page = await browser.newPage({ viewport: { width: 1600, height: 1000 } });
     const errors = [];
@@ -29,11 +29,11 @@ try {
     });
     try {
       await page.goto(`http://127.0.0.1:5193/race-test.html?skin=${skin}&day=3&quiet=1&webgl=0`);
-      await page.evaluate(async () => {
+      await page.evaluate(async (recordsPerDay) => {
         const { MockBridge } = await import('/src/bridge/mockBridge.ts');
         const { App } = await import('/src/app/App.ts');
         const { readQuery } = await import('/src/app/query.ts');
-        const mock = new MockBridge(8);
+        const mock = new MockBridge(recordsPerDay ? recordsPerDay * 2 : 8);
         const listeners = new Map();
         const state = window.transport = { calls: [], pending: [], holdUpdate: false, failUpdate: false, holdRetry: false, holdDelete: false, heldQuery: null };
         const wait = (type, payload, result) => new Promise((resolve, reject) => state.pending.push({ type, payload, resolve: () => resolve(result), reject }));
@@ -50,6 +50,13 @@ try {
             let result = await mock.request(type, payload);
             if (type === 'records.query') {
               result = structuredClone(result).map(record => record.status === 'incomplete' ? { ...record, audioPath: 'synthetic.wav' } : record);
+              if (recordsPerDay) result = result.map(record => {
+                const index = Number(record.id.slice('mock-'.length));
+                const time = new Date();
+                time.setHours(12, 0, -index, 0);
+                time.setDate(time.getDate() - Math.floor(index / recordsPerDay));
+                return { ...record, timestamp: time.toISOString(), status: index === 0 ? 'recording' : record.status };
+              });
               if (state.heldQuery === payload.query) result = await wait(type, payload, result);
             }
             call.done = true;
@@ -71,7 +78,7 @@ try {
         const options = readQuery(new URLSearchParams(location.search));
         document.documentElement.dataset.skin = options.skin;
         await new App(document.querySelector('#app'), bridge, options).initialize();
-      });
+      }, recordsPerDay);
       await test(page);
       assert.deepEqual(errors, [], 'Unhandled page errors');
       console.log(`PASS ${name}`);
@@ -85,6 +92,44 @@ try {
   const editor = page => page.locator('.inspector-editor');
   const pending = (page, type) => page.waitForFunction(type => window.transport.pending.some(item => item.type === type), type);
   const called = (page, type) => page.evaluate(type => window.transport.calls.filter(call => call.type === type).length, type);
+
+  await run('select-records-for-one-day', async page => {
+    const activeDay = page.locator('.active-date .date-pick');
+    const dayHeader = page.locator('.date-row .date-pick');
+    const scroll = page.locator('.record-scroll');
+    const count = page.locator('.manage-count');
+    const firstDay = await activeDay.getAttribute('data-day');
+    assert.equal(await activeDay.isVisible(), false);
+    await page.locator('.manage-button').click();
+    assert.ok(await page.locator('.record-item').count() < 24, 'The list must contain unmounted records');
+    await activeDay.click();
+    assert.equal(await count.innerText(), '已选 11 条', 'Select all eligible records on the first day, including unmounted rows');
+    assert.equal(await item(page, 0).getAttribute('aria-pressed'), 'false', 'An ongoing recording must remain unselected');
+    await page.locator('.manage-delete').click();
+    await scroll.evaluate(element => {
+      const row = element.querySelector('.record-item').closest('.record-row');
+      element.scrollTop = row.offsetHeight * 12 - element.clientHeight / 2;
+    });
+    await dayHeader.click();
+    assert.notEqual(await dayHeader.getAttribute('data-day'), firstDay);
+    assert.equal(await count.innerText(), '已选 12 条', 'Selecting another day replaces the previous selection');
+    assert.equal(await page.locator('.manage-delete').innerText(), '删除 12 条', 'Changing the selected day cancels an old delete confirmation');
+    assert.equal(await called(page, 'records.delete'), 0);
+    await scroll.evaluate(element => { element.scrollTop = element.scrollHeight; });
+    await page.waitForFunction(day => document.querySelector('.active-date .date-pick').dataset.day !== day, firstDay);
+    await activeDay.click();
+    assert.equal(await count.innerText(), '已选 12 条', 'The pinned date follows scrolling');
+    await page.locator('#history-search').fill('Figma');
+    await page.waitForFunction(() => window.transport.calls.some(call => call.type === 'records.query' && call.payload.query === 'Figma' && call.done));
+    await scroll.evaluate(element => { element.scrollTop = 0; });
+    await page.waitForFunction(day => document.querySelector('.active-date .date-pick').dataset.day === day, firstDay);
+    await activeDay.click();
+    assert.equal(await count.innerText(), '已选 3 条', 'Date selection uses only matching search results');
+    await page.locator('.manage-all').click();
+    assert.equal(await count.innerText(), '已选 7 条', 'Full selection still spans all matching dates');
+    await page.locator('.manage-cancel').click();
+    assert.equal(await activeDay.isVisible(), false);
+  }, 12);
 
   await run('batch-delete-waits-for-draft', async page => {
     await page.evaluate(() => { window.transport.holdUpdate = true; });

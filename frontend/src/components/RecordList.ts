@@ -4,12 +4,15 @@ import { dayKey, formatDay, formatTime } from '../utils/format';
 import { element, escapeHtml } from '../utils/html';
 import { icon } from './icons';
 
-type Row = { key: string; type: 'date' | 'record'; label: string; record?: QuanShuoRecord; offset: number; height: number };
+type Row = { key: string; offset: number; height: number } & (
+  { type: 'date'; day: string; label: string } | { type: 'record'; record: QuanShuoRecord }
+);
 
 /** 虚拟列表。滚动时复用已有节点，缩略图才不会闪。 */
 export class RecordList extends EventTarget {
   private rows: Row[] = [];
   private spacer: HTMLDivElement;
+  private activeDayButton: HTMLButtonElement;
   private mounted = new Map<string, HTMLElement>();
   private selected = new Set<string>();
   private thumbnails = new Map<string, Promise<string>>();
@@ -22,6 +25,8 @@ export class RecordList extends EventTarget {
     super();
     this.spacer = element('div', 'record-spacer');
     scroll.append(this.spacer);
+    this.activeDayButton = this.createDayButton();
+    activeDate.append(this.activeDayButton);
     this.readSizes();
     scroll.addEventListener('scroll', () => this.renderVisible(), { passive: true });
     new ResizeObserver(() => this.renderVisible()).observe(scroll);
@@ -38,11 +43,11 @@ export class RecordList extends EventTarget {
       if (day !== previousDay) {
         // 第一组的日期由列表顶部的吸顶标签显示，这里不占高度
         const height = previousDay ? this.dateHeight : 0;
-        this.rows.push({ key: `date-${day}`, type: 'date', label: formatDay(record.timestamp), offset, height });
+        this.rows.push({ key: `date-${day}`, type: 'date', day, label: formatDay(record.timestamp), offset, height });
         offset += height;
         previousDay = day;
       }
-      this.rows.push({ key: record.id, type: 'record', label: '', record, offset, height: this.recordHeight });
+      this.rows.push({ key: record.id, type: 'record', record, offset, height: this.recordHeight });
       offset += this.recordHeight;
     });
     // 末尾留出底边淡出的高度（history.css 的 .record-scroll）
@@ -98,7 +103,10 @@ export class RecordList extends EventTarget {
 
   scrollToDate(date: string): void {
     const row = this.rows.find((candidate) => candidate.key === `date-${date}`);
-    if (row) this.scroll.scrollTop = row.offset;
+    if (row) {
+      this.scroll.scrollTop = row.offset;
+      this.renderVisible();
+    }
   }
 
   private showMessage(): void {
@@ -139,7 +147,10 @@ export class RecordList extends EventTarget {
     const passed = this.rows.filter((row) => row.type === 'date' && row.offset <= scrollTop + 6);
     const current = passed[passed.length - 1] ?? this.rows.find((row) => row.type === 'date');
     const label = this.activeDate.querySelector('span');
-    if (current && label) label.textContent = current.label;
+    if (current?.type === 'date') {
+      if (label && label.textContent !== current.label) label.textContent = current.label;
+      this.bindDayButton(this.activeDayButton, current.day, current.label);
+    }
   }
 
   private createRow(row: Row): HTMLElement {
@@ -148,11 +159,30 @@ export class RecordList extends EventTarget {
     container.style.height = `${row.height}px`;
     if (row.type === 'date') {
       if (row.height === 0) container.style.visibility = 'hidden';
-      container.textContent = row.label;
-    } else if (row.record) {
+      container.append(element('span', undefined, row.label));
+      if (row.height > 0) {
+        const button = this.createDayButton();
+        this.bindDayButton(button, row.day, row.label);
+        container.append(button);
+      }
+    } else {
       container.append(this.createItem(row.record));
     }
     return container;
+  }
+
+  private createDayButton(): HTMLButtonElement {
+    const button = element('button', 'manage-pick date-pick', '选这天');
+    button.addEventListener('click', () => {
+      if (button.dataset.day) this.dispatchEvent(new CustomEvent('selectday', { detail: button.dataset.day }));
+    });
+    return button;
+  }
+
+  private bindDayButton(button: HTMLButtonElement, day: string, label: string): void {
+    const name = `选这天 · ${label}`;
+    if (button.dataset.day !== day) button.dataset.day = day;
+    if (button.getAttribute('aria-label') !== name) button.setAttribute('aria-label', name);
   }
 
   private createItem(record: QuanShuoRecord): HTMLElement {

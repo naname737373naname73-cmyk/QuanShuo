@@ -89,6 +89,10 @@
   display: flex; align-items: flex-end; padding: 0 var(--space-3) 7px;
   color: var(--ink-muted); font-size: var(--text-xs); letter-spacing: .04em;
 }
+.date-pick { display: none; }
+.journal[data-managing="true"] :is(.active-date, .date-row) { align-items: center; justify-content: space-between; }
+.journal[data-managing="true"] .date-row { padding-bottom: 0; }
+.journal[data-managing="true"] .date-pick { display: inline-block; height: 28px; color: var(--accent); }
 
 .record-item {
   position: relative; height: calc(100% - 4px); display: flex; gap: var(--space-3); align-items: center;
