@@ -156,6 +156,18 @@ try {
     await page.waitForSelector('#fixed-period', { state: 'attached' });
     const options = await page.locator('#fixed-period option').allInnerTexts();
     check('设置里只有傍晚和夜晚', options.join('|') === '跟随系统时间|傍晚|夜晚', options.join('|'));
+    const pauseEnabled = page.getByRole('switch', { name: '启用暂停／继续快捷键' });
+    const pauseKey = page.getByLabel('暂停／继续键', { exact: true });
+    check('暂停快捷键默认启用空格', await pauseEnabled.isChecked() && await pauseKey.inputValue() === 'Space');
+    await pauseKey.selectOption('F8');
+    await page.getByText('启用暂停／继续快捷键', { exact: true }).click();
+    check('关闭暂停快捷键时保留选中的按键', await pauseKey.isDisabled() && await pauseKey.inputValue() === 'F8');
+    await page.locator('button[data-action="save"]').click();
+    await page.getByText('已保存', { exact: true }).waitFor();
+    await page.getByRole('button', { name: '关闭设置' }).click();
+    await page.click('.settings-button');
+    await pauseKey.waitFor();
+    check('重新打开设置后开关和按键仍在', !(await pauseEnabled.isChecked()) && await pauseKey.isDisabled() && await pauseKey.inputValue() === 'F8');
     await page.close();
   }
 

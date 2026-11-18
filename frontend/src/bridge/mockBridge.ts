@@ -39,6 +39,8 @@ export class MockBridge implements Bridge {
   private settings: AppSettings = {
     hotkey: 'Ctrl+Alt+G',
     speechHotkey: 'Ctrl+Alt+H',
+    speechPauseShortcutEnabled: true,
+    speechPauseKey: 'Space',
     dataDirectory: 'C:\\Users\\Example\\Documents\\QuanShuo',
     freeformFillColor: '#FFFFFF',
     deleteAudioAfterSuccess: true,

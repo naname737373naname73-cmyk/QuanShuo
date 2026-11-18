@@ -358,6 +358,8 @@ public sealed class HistoryWindow : Form
                 if (updated.Skin is not ("starlake" or "crabapple")) throw new InvalidOperationException("没有这个皮肤。");
                 QuanShuo.Native.Input.GlobalHotkeyService.ValidateHotkey(updated.Hotkey);
                 QuanShuo.Native.Input.GlobalHotkeyService.ValidateHotkey(updated.SpeechHotkey);
+                if (Recording.RecordingPauseHotkey.ParseKey(updated.SpeechPauseKey) == Keys.None)
+                    throw new InvalidOperationException("请选择空格、F1–F11、字母或数字作为暂停／继续键。");
                 if (string.Equals(updated.Hotkey, updated.SpeechHotkey, StringComparison.OrdinalIgnoreCase)) throw new InvalidOperationException("圈选和说话不能用同一个快捷键。");
                 ColorTranslator.FromHtml(updated.FreeformFillColor);
                 await settingsStore.SaveAsync(updated);

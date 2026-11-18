@@ -24,6 +24,14 @@ const MODEL_NOTES: Record<string, string> = {
 // 这类模型只接受公网文件地址，圈说的录音在本机，所以列出来但不能选。
 const URL_ONLY_MODEL = 'qwen-audio-3.1-asr-flash-filetrans';
 
+const PAUSE_KEY_GROUPS = [
+  ['功能键', Array.from({ length: 11 }, (_, index) => `F${index + 1}`)],
+  ['字母', Array.from('ABCDEFGHIJKLMNOPQRSTUVWXYZ')],
+  ['数字', Array.from('0123456789')],
+] as const;
+const PAUSE_KEY_OPTIONS = PAUSE_KEY_GROUPS.map(([label, keys]) =>
+  `<optgroup label="${label}">${keys.map((key) => `<option>${key}</option>`).join('')}</optgroup>`,
+).join('');
 
 const SKINS: Array<[Skin, string, string]> = [
   ['starlake', '星湖', '夜里看湖，随时间变化'],
@@ -147,6 +155,9 @@ export class SettingsView extends EventTarget {
       this.field('服务配置 ID', '<input class="text-input mono" id="local-speech-model" placeholder="default">', '由安装 agent 填写；default 表示服务默认配置。实际模型以上方服务返回的资料为准，改这里不会安装模型。'),
     );
     speech.append(
+      this.toggle('启用暂停／继续快捷键', 'speech-pause-enabled', settings.speechPauseShortcutEnabled ?? true),
+      this.field('暂停／继续键', `<select class="select-input" id="speech-pause-key"><option value="Space">空格</option>${PAUSE_KEY_OPTIONS}</select>`,
+        '录音或暂停时，选中的键在任何窗口都只控制暂停／继续。如果需要用空格打字或选字，可以换成 F8 等功能键。'),
       this.field('识别来源', '<select class="select-input" id="speech-provider"><option value="dashscope">阿里云</option><option value="local">本地服务</option></select>'),
       local, cloud,
     );
@@ -197,6 +208,13 @@ export class SettingsView extends EventTarget {
     this.value('vocabulary-id', settings.vocabularyId ?? '');
     this.value('hotkey', settings.hotkey);
     this.value('speech-hotkey', settings.speechHotkey);
+    const pauseKey = this.input<HTMLSelectElement>('speech-pause-key');
+    pauseKey.value = settings.speechPauseKey ?? 'Space';
+    if (!pauseKey.value) pauseKey.value = 'Space';
+    const pauseEnabled = this.input('speech-pause-enabled');
+    const syncPauseShortcut = () => { pauseKey.disabled = !pauseEnabled.checked; };
+    pauseEnabled.addEventListener('change', syncPauseShortcut);
+    syncPauseShortcut();
     this.value('data-directory', settings.dataDirectory);
     this.value('fill-color', settings.freeformFillColor);
     // 以前存的清晨和正午已经没有了，显示成傍晚
@@ -267,6 +285,8 @@ export class SettingsView extends EventTarget {
       ...this.settings,
       hotkey: this.input('hotkey').value || 'Ctrl+Alt+G',
       speechHotkey: this.input('speech-hotkey').value || 'Ctrl+Alt+H',
+      speechPauseShortcutEnabled: this.input('speech-pause-enabled').checked,
+      speechPauseKey: this.input('speech-pause-key').value,
       dataDirectory: this.input('data-directory').value,
       freeformFillColor: this.input('fill-color').value,
       autoSpeakAfterSelection: this.input('auto-speak').checked,

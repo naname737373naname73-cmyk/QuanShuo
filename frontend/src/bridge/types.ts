@@ -54,6 +54,8 @@ export interface AppSettings {
   settingsRevision?: number;
   hotkey: string;
   speechHotkey: string;
+  speechPauseShortcutEnabled?: boolean;
+  speechPauseKey?: string;
   dataDirectory: string;
   freeformFillColor: string;
   deleteAudioAfterSuccess: boolean;

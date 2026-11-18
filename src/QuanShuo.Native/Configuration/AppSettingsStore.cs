@@ -3,6 +3,7 @@ using System.Text.Json.Serialization;
 using QuanShuo.Core.Configuration;
 using QuanShuo.Core.Storage;
 using QuanShuo.Core.Transcription;
+using QuanShuo.Native.Recording;
 
 namespace QuanShuo.Native.Configuration;
 
@@ -31,7 +32,12 @@ public sealed class AppSettingsStore
         {
             string json = await File.ReadAllTextAsync(path, cancellationToken).ConfigureAwait(false);
             var settings = JsonSerializer.Deserialize<AppSettings>(json, jsonOptions) ?? new AppSettings();
-            return settings with { SpeechModel = SpeechModels.Normalize(settings.SpeechModel) };
+            return settings with
+            {
+                SpeechModel = SpeechModels.Normalize(settings.SpeechModel),
+                SpeechPauseKey = RecordingPauseHotkey.ParseKey(settings.SpeechPauseKey) == Keys.None
+                    ? AppSettings.DefaultSpeechPauseKey : settings.SpeechPauseKey,
+            };
         }
         catch (JsonException exception)
         {

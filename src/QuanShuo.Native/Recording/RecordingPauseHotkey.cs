@@ -2,7 +2,7 @@ using System.Runtime.InteropServices;
 
 namespace QuanShuo.Native.Recording;
 
-/// <summary>Only the live recording owns Space. No keyboard hook or background key log.</summary>
+/// <summary>Reserves the configured key only for the lifetime of a visible recording.</summary>
 internal sealed class RecordingPauseHotkey : NativeWindow, IDisposable
 {
     private const int WmHotkey = 0x0312;
@@ -21,8 +21,26 @@ internal sealed class RecordingPauseHotkey : NativeWindow, IDisposable
     public bool Registered { get; private set; }
     public bool RegistrationFailed { get; private set; }
     public bool WaitingForRelease { get; private set; }
+    public Keys Key { get; private set; } = Keys.Space;
     public event EventHandler? Pressed;
     public event EventHandler? AvailabilityChanged;
+
+    public static Keys ParseKey(string? name)
+    {
+        if (name == "Space") return Keys.Space;
+        if (name is { Length: 1 } && name[0] is >= '0' and <= '9' or >= 'A' and <= 'Z')
+            return (Keys)name[0];
+        if (Enum.TryParse(name, out Keys key) && key is >= Keys.F1 and <= Keys.F11 && name == key.ToString())
+            return key;
+        return Keys.None;
+    }
+
+    public void SetKey(Keys key)
+    {
+        if (Key == key) return;
+        SetEnabled(false);
+        Key = key;
+    }
 
     public void SetEnabled(bool value)
     {
@@ -42,9 +60,8 @@ internal sealed class RecordingPauseHotkey : NativeWindow, IDisposable
     private void TryRegister()
     {
         if (!enabled || disposed || Registered) return;
-        // A screenshot can be confirmed by the Space key still being held down.
-        // Do not let its repeat become the first pause of the new recording.
-        WaitingForRelease = (GetAsyncKeyState((int)Keys.Space) & 0x8000) != 0;
+        // A key may already be held when a recording opens or the shortcut changes.
+        WaitingForRelease = (GetAsyncKeyState((int)Key) & 0x8000) != 0;
         if (WaitingForRelease)
         {
             retry.Interval = 25;
@@ -53,7 +70,7 @@ internal sealed class RecordingPauseHotkey : NativeWindow, IDisposable
         }
         // Fresh IDs reject already queued notifications from a previous focus/session.
         registrationId = registrationId % 0xBFFF + 1;
-        Registered = RegisterHotKey(Handle, registrationId, ModNoRepeat, (uint)Keys.Space);
+        Registered = RegisterHotKey(Handle, registrationId, ModNoRepeat, (uint)Key);
         SetFailure(!Registered);
         if (Registered) retry.Stop();
         else

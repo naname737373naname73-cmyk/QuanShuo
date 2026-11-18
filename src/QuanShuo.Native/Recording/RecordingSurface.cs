@@ -42,6 +42,7 @@ public abstract class RecordingSurface : Form
     private const int WmKeyUp = 0x0101;
     private const int WmChar = 0x0102;
     private const long KeyWasAlreadyDown = 1L << 30;
+    private const long KeyScanCode = 0x01FF0000;
     private const int TransparentBackground = 1;
     private const int NullBrush = 5;
     private readonly System.Windows.Forms.Timer saveTimer = new() { Interval = 550 };
@@ -68,7 +69,9 @@ public abstract class RecordingSurface : Form
     private bool rescalePending;
     private bool quietMode;
     private bool reduceMotion;
-    private bool pauseSpaceHeld;
+    private bool pauseShortcutEnabled = true;
+    private Keys heldPauseKey;
+    private long heldPauseScanCode;
     private bool captureStopped;
     private float targetLevel;
     private float smoothLevel;
@@ -102,17 +105,13 @@ public abstract class RecordingSurface : Form
         closeButton.Text = "×";
         closeButton.Click += (_, _) => Close();
         transcript.AccessibleName = "转写文字";
-        transcript.AccessibleDescription = "点击或按 Tab 编辑文字；编辑时空格用于输入，不会暂停录音。";
         transcript.TabIndex = 1;
-        transcript.GotFocus += (_, _) => { SyncPauseShortcut(); RefreshRecordingHint(); };
-        transcript.LostFocus += (_, _) => { QueuePauseShortcutSync(); RefreshRecordingHint(); };
         transcript.Committed += (_, _) => OnTextCommitted();
         pauseButton.Text = "暂停";
-        pauseButton.AccessibleName = "暂停录音，空格键";
         pauseButton.TabIndex = 0;
         pauseButton.Click += (_, _) => ToggleRecordingPause();
         pauseButton.EnabledChanged += (_, _) => SyncPauseShortcut();
-        pauseButton.GotFocus += (_, _) => SyncPauseShortcut();
+        UpdatePauseAccessibility();
         closeButton.TabIndex = 9;
         retryButton.TabIndex = 5;
         retryButton.Text = "重新转写";
@@ -155,8 +154,6 @@ public abstract class RecordingSurface : Form
         captureStopped = true;
         SyncPauseShortcut();
     }
-
-    protected bool EditingTranscript => IsHandleCreated && GetForegroundWindow() == Handle && transcript.ContainsFocus;
 
     /// <summary>当前这一条录音的文字，给协调器合并识别结果用。</summary>
     public string MergeRecognized(string recognized, bool sentenceEnd) => transcript.Merge(recognized, sentenceEnd);
@@ -206,7 +203,7 @@ public abstract class RecordingSurface : Form
         if (value) spoken.Stop();
         else spoken.Start();
         pauseButton.Text = value ? "继续" : "暂停";
-        pauseButton.AccessibleName = value ? "继续录音，空格键" : "暂停录音，空格键";
+        UpdatePauseAccessibility();
         RefreshRecordingHint();
         SyncRipple();
         Invalidate(rippleBounds);
@@ -218,6 +215,7 @@ public abstract class RecordingSurface : Form
         recording = false;
         saving = false;
         SyncPauseShortcut();
+        UpdatePauseAccessibility();
         spoken.Stop();
         secondTimer.Stop();
         SyncRipple();
@@ -279,8 +277,16 @@ public abstract class RecordingSurface : Form
         finally { closingAfterSave = false; }
     }
 
-    protected abstract string ListeningStatus { get; }
-    protected abstract string PausedStatus { get; }
+    private string PauseKeyLabel => pauseShortcut.Key switch
+    {
+        Keys.Space => "空格",
+        >= Keys.D0 and <= Keys.D9 => ((char)pauseShortcut.Key).ToString(),
+        _ => pauseShortcut.Key.ToString(),
+    };
+
+    private string ListeningStatus => pauseShortcutEnabled ? $"{PauseKeyLabel}键暂停" : "正在听";
+    private string PausedStatus => automaticallyPaused ? "静音已暂停" :
+        pauseShortcutEnabled ? $"{PauseKeyLabel}键继续" : "已暂停";
     protected abstract void ApplyLayout(float newScale);
     protected abstract void OnRecordChanged();
     protected virtual void OnErrorShown() { }
@@ -306,36 +312,47 @@ public abstract class RecordingSurface : Form
     /// <summary>用户在录音结束后改了文字。</summary>
     protected virtual void OnEditedAfterFinish() { }
 
-    /// <summary>开始时留在录音控制上，空格可以直接暂停；Tab 或点击文字后仍然正常打字。</summary>
+    /// <summary>先聚焦录音控制，仍可按 Tab 或点击文字进入编辑。</summary>
     protected void FocusRecordingControls()
     {
         if (recording && !saving) pauseButton.Focus();
         else transcript.Focus();
     }
 
-    private void RefreshRecordingHint()
+    protected void RefreshRecordingHint()
     {
         if (recording && !saving && !hasError)
-            SetStatus(captureStopped ? "正在结束并保存…" : pauseShortcut.RegistrationFailed ? "空格被占用，请点暂停/继续" : paused ? PausedStatus : ListeningStatus);
+            SetStatus(captureStopped ? "正在结束并保存…" :
+                pauseShortcut.RegistrationFailed ? $"{PauseKeyLabel}键被占用，请点暂停／继续" :
+                paused ? PausedStatus : ListeningStatus);
     }
 
-    private bool WantsGlobalPauseShortcut => Visible && IsHandleCreated && recording && !captureStopped && !saving && !IsDisposed && !Disposing &&
-        pauseButton.Enabled && !EditingTranscript;
+    private bool WantsGlobalPauseShortcut => pauseShortcutEnabled && Visible && IsHandleCreated &&
+        recording && !captureStopped && !saving && !IsDisposed && !Disposing && pauseButton.Enabled;
+
+    internal void ConfigurePauseShortcut(bool enabled, string key)
+    {
+        pauseShortcutEnabled = enabled;
+        pauseShortcut.SetKey(RecordingPauseHotkey.ParseKey(key));
+        SyncPauseShortcut();
+        UpdatePauseAccessibility();
+    }
+
+    private void UpdatePauseAccessibility()
+    {
+        string action = paused ? "继续录音" : "暂停录音";
+        bool reserved = recording && pauseShortcutEnabled;
+        pauseButton.AccessibleName = reserved ? $"{action}，{PauseKeyLabel}键" : action;
+        transcript.AccessibleDescription = reserved
+            ? $"可编辑转写文字。录音期间，{PauseKeyLabel}键用于暂停或继续。"
+            : "可编辑转写文字。";
+    }
 
     private void SyncPauseShortcut()
     {
         if (pauseShortcut is null) return; // Form can raise visibility events while being constructed.
-        bool enabled = WantsGlobalPauseShortcut;
-        // Finishing can move focus into the editor while a local Space is held.
-        // Keep consuming that key's release so it cannot activate another control.
-        if (recording && EditingTranscript) pauseSpaceHeld = false;
-        pauseShortcut.SetEnabled(enabled);
+        pauseShortcut.SetEnabled(WantsGlobalPauseShortcut);
         RefreshRecordingHint();
-    }
-
-    private void QueuePauseShortcutSync()
-    {
-        if (IsHandleCreated && !IsDisposed && !Disposing) BeginInvoke(SyncPauseShortcut);
     }
 
     private void ToggleRecordingPause()
@@ -353,19 +370,24 @@ public abstract class RecordingSurface : Form
 
     protected override bool ProcessKeyPreview(ref Message message)
     {
-        if ((Keys)message.WParam.ToInt32() != Keys.Space) return base.ProcessKeyPreview(ref message);
-        if (message.Msg == WmKeyUp && (pauseSpaceHeld || recording && !transcript.ContainsFocus))
+        Keys key = (Keys)message.WParam.ToInt32();
+        bool held = heldPauseKey != Keys.None && key == heldPauseKey;
+        bool reserved = key == pauseShortcut.Key && ModifierKeys == Keys.None && WantsGlobalPauseShortcut;
+        long flags = message.LParam.ToInt64();
+        if (message.Msg == WmKeyUp && (held || reserved))
         {
-            // GlassButton 的 KeyUp 也会点击；连打开卡片前按下的空格抬键也要忽略。
-            pauseSpaceHeld = false;
+            if (held) heldPauseKey = Keys.None;
             return true;
         }
-        if (pauseSpaceHeld && message.Msg is WmKeyDown or WmChar) return true;
-        if (message.Msg == WmKeyDown && ModifierKeys == Keys.None && !transcript.ContainsFocus && recording && !saving && pauseButton.Enabled)
+        if (message.Msg == WmChar && heldPauseKey != Keys.None && (flags & KeyScanCode) == heldPauseScanCode)
+            return true;
+        if (message.Msg == WmKeyDown && (held || reserved))
         {
-            pauseSpaceHeld = true;
-            // 截图可能由仍按着的空格开启，系统重复消息不能把新录音立刻暂停。
-            if (!pauseShortcut.WaitingForRelease && (message.LParam.ToInt64() & KeyWasAlreadyDown) == 0) ToggleRecordingPause();
+            if (held) return true;
+            heldPauseKey = key;
+            heldPauseScanCode = flags & KeyScanCode;
+            if (!pauseShortcut.WaitingForRelease && (flags & KeyWasAlreadyDown) == 0)
+                ToggleRecordingPause();
             return true;
         }
         return base.ProcessKeyPreview(ref message);
@@ -373,17 +395,8 @@ public abstract class RecordingSurface : Form
 
     protected override void OnDeactivate(EventArgs e)
     {
-        pauseSpaceHeld = false;
+        heldPauseKey = Keys.None;
         base.OnDeactivate(e);
-        // WinForms may retain the text control as its logical ActiveControl while
-        // Windows has moved keyboard focus to another application.
-        QueuePauseShortcutSync();
-    }
-
-    protected override void OnActivated(EventArgs e)
-    {
-        base.OnActivated(e);
-        SyncPauseShortcut();
     }
 
     protected override void OnHandleDestroyed(EventArgs e)
@@ -898,9 +911,6 @@ public abstract class RecordingSurface : Form
 
     [System.Runtime.InteropServices.DllImport("gdi32.dll")]
     private static extern IntPtr CreateRoundRectRgn(int left, int top, int right, int bottom, int width, int height);
-
-    [System.Runtime.InteropServices.DllImport("user32.dll")]
-    private static extern IntPtr GetForegroundWindow();
 
     [System.Runtime.InteropServices.DllImport("user32.dll")]
     private static extern int SetWindowRgn(IntPtr window, IntPtr region, [System.Runtime.InteropServices.MarshalAs(System.Runtime.InteropServices.UnmanagedType.Bool)] bool redraw);

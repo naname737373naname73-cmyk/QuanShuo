@@ -40,7 +40,7 @@ public sealed class SpeechWindow : RecordingSurface
         Text = "圈说 · 说话";
         closeButton.AccessibleName = "关闭说话窗口";
         copyButton.Text = "复制";
-        copyButton.AccessibleDescription = "暂停录音并复制当前文字；按空格继续录音。";
+        copyButton.AccessibleDescription = "暂停录音并复制当前文字。";
         copyButton.Click += (_, _) => CopyOnly();
         sendButton.Click += (_, _) => Deliver();
         Controls.AddRange([closeButton, transcript, pauseButton, copyButton, sendButton, retryButton]);
@@ -60,8 +60,6 @@ public sealed class SpeechWindow : RecordingSurface
     /// <summary>正在听或正在收尾时为 true。</summary>
     public bool IsListening => recording;
 
-    protected override string ListeningStatus => EditingTranscript ? "随时可以改" : NativeTheme.IsCrabapple ? "正在听 · 全局空格暂停" : "全局空格暂停";
-    protected override string PausedStatus => automaticallyPaused ? "静音已暂停" : EditingTranscript ? "已暂停，改好点继续" : NativeTheme.IsCrabapple ? "已暂停 · 全局空格继续" : "全局空格继续";
     protected override CrabapplePrint CreatePrint() => new(PrintOrigin, PrintZoom);
 
     protected override void StyleButtons()
@@ -230,7 +228,7 @@ public sealed class SpeechWindow : RecordingSurface
         pauseButton.Visible = recording;
         retryShown = !recording && record.Status == TranscriptionStatus.Incomplete && !string.IsNullOrEmpty(record.AudioPath) && File.Exists(record.AudioPath);
         retryButton.Visible = retryShown;
-        if (recording) SetStatus(paused ? PausedStatus : ListeningStatus);
+        if (recording) RefreshRecordingHint();
         else if (record.Status == TranscriptionStatus.Completed) SetStatus(NativeTheme.IsCrabapple ? "说完了，改好按 Enter 发送" : "改好按 Enter 发送");
         else SetStatus("转写没完成，文字和录音都保留着", true);
         UpdateSendLabel();

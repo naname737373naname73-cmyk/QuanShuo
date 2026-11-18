@@ -213,9 +213,16 @@ public sealed class TrayApplicationContext : ApplicationContext
         captureController.AutoSpeakAfterSelection = updated.AutoSpeakAfterSelection;
         captureController.QuietMode = updated.QuietMode;
         trayIconService.QuietMode = updated.QuietMode;
-        if (recordingCard is not null && !recordingCard.IsDisposed) recordingCard.QuietMode = updated.QuietMode;
-        if (speechWindow is not null && !speechWindow.IsDisposed) speechWindow.QuietMode = updated.QuietMode;
+        ConfigureRecordingSurface(recordingCard);
+        ConfigureRecordingSurface(speechWindow);
         recordingCoordinator.UpdateSettings(updated);
+    }
+
+    private void ConfigureRecordingSurface(RecordingSurface? surface)
+    {
+        if (surface is null || surface.IsDisposed) return;
+        surface.QuietMode = settings.QuietMode;
+        surface.ConfigurePauseShortcut(settings.SpeechPauseShortcutEnabled, settings.SpeechPauseKey);
     }
 
     private async void OpenRecordingCard(QuanShuoRecord record)
@@ -228,7 +235,7 @@ public sealed class TrayApplicationContext : ApplicationContext
             if (recordingCard is not null && !recordingCard.IsDisposed) await recordingCard.SaveEditedTextAsync();
             if (await RejectRecordingDuringModelSwitchAsync(record)) return;
             recordingCard?.Dispose();
-            recordingCard = new RecordingCard(record, BuildRecordingActions()) { QuietMode = settings.QuietMode };
+            recordingCard = new RecordingCard(record, BuildRecordingActions());
             await StartSurfaceAsync(recordingCard, record);
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
@@ -270,7 +277,7 @@ public sealed class TrayApplicationContext : ApplicationContext
             QuanShuoRecord record = await store.CreateTextAsync(metadata, TranscriptionStatus.Recording);
             // 写入记录会让出 UI 线程；这期间可能刚好开始切换，不能再打开录音窗口。
             if (await RejectRecordingDuringModelSwitchAsync(record)) return;
-            var window = new SpeechWindow(record, BuildRecordingActions(), target, lastSpeechBounds) { QuietMode = settings.QuietMode };
+            var window = new SpeechWindow(record, BuildRecordingActions(), target, lastSpeechBounds);
             window.FormClosing += (_, _) => lastSpeechBounds = window.Bounds;
             window.FormClosed += (_, _) =>
             {
@@ -306,6 +313,7 @@ public sealed class TrayApplicationContext : ApplicationContext
 
     private async Task StartSurfaceAsync(RecordingSurface surface, QuanShuoRecord record)
     {
+        ConfigureRecordingSurface(surface);
         activeSurface = surface;
         recordingCoordinator.TextMerger = surface.MergeRecognized;
         recordingCoordinator.FinalTextSnapshot = surface.CaptureFinalText;

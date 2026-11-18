@@ -28,6 +28,7 @@ internal static class RecordingPersistenceAudit
             using var switching = (IDisposable)gate.GetType().GetMethod("EnterSwitch")!.Invoke(gate, null)!;
             // Avoid the tray constructor: it loads real settings and registers application hotkeys.
             var context = (TrayApplicationContext)RuntimeHelpers.GetUninitializedObject(typeof(TrayApplicationContext));
+            Set(context, "settings", f.Coordinator.Settings);
             Set(context, "store", f.Store);
             Set(context, "recordingCoordinator", f.Coordinator);
             var actions = (RecordingActions)typeof(TrayApplicationContext).GetMethod("BuildRecordingActions", BindingFlags.Instance | BindingFlags.NonPublic)!.Invoke(context, null)!;
@@ -213,8 +214,6 @@ internal static class RecordingPersistenceAudit
         [System.ComponentModel.DesignerSerializationVisibility(System.ComponentModel.DesignerSerializationVisibility.Hidden)]
         internal bool SuppressDisplay { get; init; }
         protected override void SetVisibleCore(bool value) { if (!SuppressDisplay) base.SetVisibleCore(value); }
-        protected override string ListeningStatus => "listening";
-        protected override string PausedStatus => "paused";
         protected override void ApplyLayout(float scale) { }
         protected override void OnRecordChanged() { }
         protected override CrabapplePrint CreatePrint() => throw new NotSupportedException();

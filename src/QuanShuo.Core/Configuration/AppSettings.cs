@@ -5,9 +5,13 @@ namespace QuanShuo.Core.Configuration;
 
 public sealed record AppSettings
 {
+    public const string DefaultSpeechPauseKey = "Space";
+
     public long SettingsRevision { get; init; }
     public string Hotkey { get; init; } = "Ctrl+Alt+G";
     public string SpeechHotkey { get; init; } = "Ctrl+Alt+H";
+    public bool SpeechPauseShortcutEnabled { get; init; } = true;
+    public string SpeechPauseKey { get; init; } = DefaultSpeechPauseKey;
     public string DataDirectory { get; init; } = Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
         "QuanShuo");

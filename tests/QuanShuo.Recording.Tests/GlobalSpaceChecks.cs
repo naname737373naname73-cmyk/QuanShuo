@@ -117,10 +117,10 @@ internal static class GlobalSpaceChecks
         await Foreground(surface.Handle); editor.Focus(); await Task.Delay(120);
         string textBefore = editor.Text; previous = toggles; editor.SelectionStart = editor.TextLength;
         await Press(surface.Handle);
-        Check(name + ": editing keeps literal Space without toggling", editor.Text == textBefore + " " && toggles == previous);
+        Check(name + ": reserved Space pauses while the editor is focused and is not typed", editor.Text == textBefore && toggles == previous + 1);
         typeof(LiveTextBox).GetField("composing", Hidden)!.SetValue(editor, true);
         await Press(surface.Handle);
-        Check(name + ": IME composition Space does not pause", toggles == previous);
+        Check(name + ": composition does not free the reserved Space", toggles == previous + 2);
         typeof(LiveTextBox).GetField("composing", Hidden)!.SetValue(editor, false);
         await Foreground(targetHandle); previous = toggles;
         await Press(targetHandle);
@@ -161,7 +161,7 @@ internal static class GlobalSpaceChecks
                 editor.Focus();
                 previous = toggles;
                 await Press(surface.Handle);
-                Check(name + ": editing after copy still types Space", editor.Text == " " && toggles == previous);
+                Check(name + ": reserved Space resumes after refocusing the editor", editor.Text == "" && toggles == previous + 1);
                 editor.ReplaceAll("复制测试文字");
             }
             finally
@@ -171,6 +171,28 @@ internal static class GlobalSpaceChecks
             }
             await Foreground(targetHandle);
         }
+
+        surface.ConfigurePauseShortcut(false, "Space");
+        previous = toggles; beforeText = TargetText().Length;
+        await Press(targetHandle);
+        Check(name + ": disabling the shortcut releases Space immediately",
+            !Registered(surface) && toggles == previous && TargetText().Length == beforeText + 1);
+
+        surface.ConfigurePauseShortcut(true, "P");
+        await Press(targetHandle);
+        Check(name + ": changing the shortcut keeps Space available",
+            Registered(surface) && toggles == previous && TargetText().Length == beforeText + 2);
+        await Press(targetHandle, (ushort)Keys.P);
+        Check(name + ": the chosen letter acts globally and is not typed",
+            toggles == previous + 1 && TargetText().Length == beforeText + 2);
+        await Foreground(surface.Handle);
+        editor.Focus();
+        textBefore = editor.Text;
+        await Press(surface.Handle, (ushort)Keys.P);
+        Check(name + ": the chosen letter acts while editing without inserting text",
+            toggles == previous + 2 && editor.Text == textBefore);
+        await Foreground(targetHandle);
+        surface.ConfigurePauseShortcut(true, "Space");
 
         surface.SetFinished(record with { Status = TranscriptionStatus.Incomplete }); await Task.Delay(100);
         beforeText = TargetText().Length; previous = toggles;
@@ -329,9 +351,9 @@ internal static class GlobalSpaceChecks
     {
         if (GetForegroundWindow() != handle) throw new InvalidOperationException("Test input stopped: expected isolated target is no longer foreground.");
     }
-    private static async Task Press(IntPtr handle)
+    private static async Task Press(IntPtr handle, ushort key = Space)
     {
-        RequireForeground(handle); Send(Space, false); await Task.Delay(35); Send(Space, true); await Task.Delay(180);
+        RequireForeground(handle); Send(key, false); await Task.Delay(35); Send(key, true); await Task.Delay(180);
     }
     private static void Check(string name, bool passed, string detail = "")
     {

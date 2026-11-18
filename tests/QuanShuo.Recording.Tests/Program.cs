@@ -1,5 +1,7 @@
 using System.Reflection;
 using System.Runtime.InteropServices;
+using System.Text.Json;
+using QuanShuo.Core.Configuration;
 using QuanShuo.Core.Models;
 using QuanShuo.Native.Recording;
 using QuanShuo.Native.Shell;
@@ -23,6 +25,8 @@ internal static class Program
         try
         {
             IdlePauseChecks.Run();
+            var legacy = JsonSerializer.Deserialize<AppSettings>("{}")!;
+            Check("legacy settings default to enabled Space", legacy.SpeechPauseShortcutEnabled && legacy.SpeechPauseKey == "Space");
             foreach (string skin in new[] { "starlake", "crabapple" })
             {
                 NativeTheme.UseSkin(skin);
@@ -84,38 +88,50 @@ internal static class Program
         Key(text, Down, 0);
         Key(text, Character, 0);
         Key(text, Up, Repeat);
-        Check(name + ": editing keeps space", toggles == 2 && text.Text == before + " ");
+        Check(name + ": reserved Space pauses while editing and is not entered", toggles == 3 && paused && text.Text == before);
         typeof(LiveTextBox).GetField("composing", Hidden)!.SetValue(text, true);
-        Check(name + ": IME space reaches editor", !Preview(surface, Down, 0) && toggles == 2);
+        Check(name + ": composition keeps Space reserved", Preview(surface, Down, 0) && toggles == 4 && !paused);
+        Key(text, Up, Repeat);
         typeof(LiveTextBox).GetField("composing", Hidden)!.SetValue(text, false);
 
+        surface.ConfigurePauseShortcut(true, "F8");
         surface.SetPaused(true, automatic: true);
         paused = true;
-        Check(name + ": idle pause preserves draft and shows reason", text.Text == before + " " &&
+        Check(name + ": idle pause preserves draft and shows reason", text.Text == before &&
             (string)typeof(RecordingSurface).GetProperty("statusText", Hidden)!.GetValue(surface)! == "静音已暂停");
-        Key(text, Down, 0);
-        Key(text, Character, 0);
-        Key(text, Up, Repeat);
-        Check(name + ": idle pause does not hijack editor space", toggles == 2 && paused && text.Text == before + "  ");
-        pause.Focus();
-        Key(pause, Down, 0);
-        Key(pause, Up, Repeat);
-        Check(name + ": space resumes after automatic pause", toggles == 3 && !paused &&
+        Key(text, Down, 0, Keys.F8);
+        Key(text, Up, Repeat, Keys.F8);
+        Check(name + ": the chosen key resumes automatic pause while editing", toggles == 5 && !paused && text.Text == before &&
             !(bool)typeof(RecordingSurface).GetProperty("automaticallyPaused", Hidden)!.GetValue(surface)!);
 
+        surface.ConfigurePauseShortcut(false, "Space");
+        TypeSpace(text);
+        Check(name + ": disabling restores Space for typing", toggles == 5 && text.Text == before + " ");
+
+        surface.ConfigurePauseShortcut(true, "F8");
+        TypeSpace(text);
+        Check(name + ": replacing Space preserves normal typing", toggles == 5 && text.Text == before + "  ");
+        Key(text, Down, 0, Keys.F8);
+        Key(text, Up, Repeat, Keys.F8);
+        Check(name + ": chosen key pauses and labels the resume control", toggles == 6 && paused && pause.AccessibleName!.Contains("F8"));
+        Key(text, Down, 0, Keys.F8);
+        Key(text, Up, Repeat, Keys.F8);
+        Check(name + ": chosen key resumes", toggles == 7 && !paused && text.Text == before + "  ");
+
+        surface.ConfigurePauseShortcut(true, "Space");
         pause.Focus();
         typeof(RecordingSurface).GetField("saving", Hidden)!.SetValue(surface, true);
         Key(pause, Down, 0);
         Key(pause, Up, Repeat);
         surface.SetPaused(true, automatic: true);
-        Check(name + ": finalizing does not pause", toggles == 3 && !paused);
+        Check(name + ": finalizing does not pause", toggles == 7 && !paused);
         typeof(RecordingSurface).GetField("saving", Hidden)!.SetValue(surface, false);
 
         // Finish while a shortcut is held: its later release must not activate another action.
         Key(pause, Down, 0);
         surface.SetFinished(record with { Text = text.Text, Status = TranscriptionStatus.Completed });
         Check(name + ": release after finishing is consumed", Preview(surface, Up, Repeat));
-        Check(name + ": finished recording does not toggle", !Preview(surface, Down, 0) && toggles == 4);
+        Check(name + ": finished recording does not toggle", !Preview(surface, Down, 0) && toggles == 8);
         VerifyFinishKey(name, create, Keys.Enter);
         VerifyFinishKey(name, create, Keys.Escape);
     }
@@ -156,7 +172,15 @@ internal static class Program
         object[] args = [packet];
         return (bool)typeof(RecordingSurface).GetMethod("ProcessKeyPreview", Hidden)!.Invoke(surface, args)!;
     }
-    private static void Key(Control target, int message, long flags) => SendMessage(target.Handle, message, (IntPtr)Keys.Space, (IntPtr)(flags | 1));
+    private static void TypeSpace(Control editor)
+    {
+        Key(editor, Down, 0);
+        Key(editor, Character, 0);
+        Key(editor, Up, Repeat);
+    }
+
+    private static void Key(Control target, int message, long flags, Keys key = Keys.Space) =>
+        SendMessage(target.Handle, message, (IntPtr)key, (IntPtr)(flags | 1));
     private static void Check(string name, bool passed)
     {
         if (!passed) throw new InvalidOperationException("FAIL " + name);
